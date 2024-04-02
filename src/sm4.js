@@ -65,7 +65,7 @@ SM4.prototype = {
   },
 
   _tables: [[], [], [], [], []],
-  _ck: [rounds],
+  _ck: [],
 
   _sm4L: function (x) {
     const y = (x ^=
@@ -88,6 +88,7 @@ SM4.prototype = {
         ((((j + 2) * 7) & 0xff) << 8) |
         (((j + 3) * 7) & 0xff)
     }
+    this._ck = this._ck.slice(0)
 
     const sbox = this._tables[4]
     const tmp = []
