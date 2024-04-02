@@ -1,0 +1,27 @@
+{
+    "name": "gmsm-sm4js",
+    "version": "0.1.0",
+    "description": "Pure Javascript implementation of the SM4 block cipher",
+    "keywords": [
+        "sm4",
+        "gmsm"
+    ],
+    "main": "index.js",
+    "scripts": {
+        "test": "standard && node src/sm4_test.js"
+    },
+    "devDependencies": {
+        "sjcl-with-all": "^1.0.8",
+        "standard": "^17.1.0",
+        "tape": "*"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/emmansun/sm4js.git"
+    },
+    "author": "Emman Sun",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/emmansun/sm4js/issues"
+    }
+}
