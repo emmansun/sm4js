@@ -1,6 +1,6 @@
 {
     "name": "gmsm-sm4js",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Pure Javascript implementation of the SM4 block cipher",
     "keywords": [
         "sm4",

@@ -4,14 +4,6 @@
 
 const rounds = 32
 const fk = [0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc]
-const ck = [
-  0x00070e15, 0x1c232a31, 0x383f464d, 0x545b6269, 0x70777e85, 0x8c939aa1,
-  0xa8afb6bd, 0xc4cbd2d9, 0xe0e7eef5, 0xfc030a11, 0x181f262d, 0x343b4249,
-  0x50575e65, 0x6c737a81, 0x888f969d, 0xa4abb2b9, 0xc0c7ced5, 0xdce3eaf1,
-  0xf8ff060d, 0x141b2229, 0x30373e45, 0x4c535a61, 0x686f767d, 0x848b9299,
-  0xa0a7aeb5, 0xbcc3cad1, 0xd8dfe6ed, 0xf4fb0209, 0x10171e25, 0x2c333a41,
-  0x484f565d, 0x646b7279
-]
 
 /**
  * Schedule out an SM4 key for both encryption and decryption.  This
@@ -39,7 +31,7 @@ const SM4 = function (key) {
   const sbox = this._tables[4]
   let tmp
   for (let i = 0; i < rounds; i++) {
-    tmp = encKey[i + 1] ^ encKey[i + 2] ^ encKey[i + 3] ^ ck[i]
+    tmp = encKey[i + 1] ^ encKey[i + 2] ^ encKey[i + 3] ^ this._ck[i]
     tmp =
       (sbox[tmp >>> 24] << 24) |
       (sbox[(tmp >> 16) & 255] << 16) |
@@ -73,6 +65,7 @@ SM4.prototype = {
   },
 
   _tables: [[], [], [], [], []],
+  _ck: [rounds],
 
   _sm4L: function (x) {
     const y = (x ^=
@@ -86,6 +79,16 @@ SM4.prototype = {
   },
 
   _precompute: function () {
+    // generate ck
+    for (let i = 0; i < 32; i++) {
+      const j = 4 * i
+      this._ck[i] =
+        (((j * 7) & 0xff) << 24) |
+        ((((j + 1) * 7) & 0xff) << 16) |
+        ((((j + 2) * 7) & 0xff) << 8) |
+        (((j + 3) * 7) & 0xff)
+    }
+
     const sbox = this._tables[4]
     const tmp = []
     const reverseTable = []
