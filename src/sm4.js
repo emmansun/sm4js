@@ -191,4 +191,19 @@ SM4.prototype = {
   }
 }
 
+let sjcl
+
+try {
+  sjcl = require('sjcl')
+} catch (e) {
+  try {
+    sjcl = require('sjcl-with-all')
+  } catch (e) {
+  }
+}
+
+if (sjcl?.cipher) {
+  sjcl.cipher.sm4 = SM4
+}
+
 module.exports = SM4
