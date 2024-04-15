@@ -4,4 +4,3 @@ module.exports = {
   ...require('./src/sm4'),
   ...require('./src/sm2')
 }
-  

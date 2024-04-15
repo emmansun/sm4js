@@ -191,7 +191,7 @@ SM4.prototype = {
   }
 }
 
-function bindSM4(sjcl) {
+function bindSM4 (sjcl) {
   sjcl.cipher.sm4 = sjcl.cipher.sm4 || SM4
 }
 

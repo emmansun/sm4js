@@ -2,7 +2,7 @@
  *  @author Emman Sun
  */
 
-function bindSM2(sjcl) {
+function bindSM2 (sjcl) {
   if (sjcl.ecc.curves.sm2p256v1) return
 
   const sbp = sjcl.bn.pseudoMersennePrime

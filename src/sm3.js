@@ -2,7 +2,7 @@
  *  @author Emman Sun
  */
 
-function bindSM3(sjcl) {
+function bindSM3 (sjcl) {
   /**
    * Context for a SM3 operation in progress.
    * @constructor

@@ -34,8 +34,7 @@ function bindKDF (sjcl) {
     return sjcl.bitArray.clamp(ret, keyBitLength)
   }
 }
-  
+
 module.exports = {
   bindKDF
 }
-  
