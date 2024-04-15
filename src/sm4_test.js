@@ -1,6 +1,7 @@
 const test = require('tape')
 const sjcl = require('sjcl-with-all')
-const SM4 = require('./sm4')
+require('./sm4').bindSM4(sjcl)
+const SM4 = sjcl.cipher.sm4
 
 test('test sample 1', (t) => {
   const key = sjcl.codec.hex.toBits('0123456789abcdeffedcba9876543210')

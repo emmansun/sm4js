@@ -1,15 +1,17 @@
 {
     "name": "gmsm-sm4js",
-    "version": "0.2.0",
-    "description": "Pure Javascript implementation of the SM4 block cipher",
+    "version": "0.3.0",
+    "description": "Pure Javascript implementation of the SM2/SM3/SM4 cipher based on sjcl",
     "keywords": [
+        "sm2",
+        "sm3",
         "sm4",
         "gmsm",
         "sjcl"
     ],
     "main": "index.js",
     "scripts": {
-        "test": "standard && node src/sm3_test.js && node src/sm4_test.js"
+        "test": "standard && node src/sm3_test.js && node src/sm4_test.js && node src/kdf_test.js && node src/sm2_test.js"
     },
     "devDependencies": {
         "sjcl-with-all": "^1.0.8",

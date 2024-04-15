@@ -1,6 +1,7 @@
 const test = require('tape')
 const sjcl = require('sjcl-with-all')
-const SM3 = require('./sm3')
+require('./sm3').bindSM3(sjcl)
+const SM3 = sjcl.hash.sm3
 
 test('SM3 basic', function (t) {
   t.equal(
