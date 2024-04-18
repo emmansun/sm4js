@@ -62,7 +62,7 @@ function bindSM2 (sjcl) {
   sjcl.ecc.sm2 = {
     /** sm2 publicKey.
      * @constructor
-     * @augments sjcl.ecc.basicKey.publicKey
+     * @param {point} point the point on the sm2 curve
      */
     publicKey: function (point) {
       this._curve = sm2Curve
@@ -96,7 +96,7 @@ function bindSM2 (sjcl) {
     },
     /** sm2 secretKey
      * @constructor
-     * @augments sjcl.ecc.basicKey.secretKey
+     * @param {bn|bitArray} exponent The private key big number
      */
     secretKey: function (exponent) {
       if (exponent instanceof Array) {
