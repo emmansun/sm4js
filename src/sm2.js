@@ -215,6 +215,17 @@ function bindSM2 (sjcl) {
       return plaintext
     },
 
+    /**
+     * SM2 Key Exchange, return the implicit signature
+     * @param {sjcl.ecc.sm2.secretKey} ephemeralPrivateKey Generated ephemeral private key
+     * @param {sjcl.ecc.sm2.publicKey} ephemeralPubKey Generated ephemeral public key
+     * @returns {sjcl.bn}
+     */
+    implicitSig: function (ephemeralPrivateKey, ephemeralPubKey) {
+      const R = this._curve.r
+      return ephemeralPrivateKey._exponent.mul(ephemeralPubKey._avf()).add(this._exponent).mod(R)
+    },
+    
     getType: function () {
       return 'sm2'
     }
@@ -240,6 +251,40 @@ function bindSM2 (sjcl) {
       hash.update(this._curve.G.toBits())
       hash.update(this._point.toBits())
       return hash.finalize()
+    },
+
+    _avf: function () {
+      const bits = sjcl.bitArray.bitSlice(this._point.x.toBits(), 16 * 8)
+      bits[0] &= 0x7fffffff
+      bits[0] |= 0x80000000
+      return sjcl.bn.fromBits(bits)
+    },
+
+    /**
+     * SM2 Key Exchange, generate shared key material from shared secret key
+     * @param {Number} keyLen The required key length in bits
+     * @param {bitArray} za1 For initiator, this is own ZA; otherwise, it's peer's ZA
+     * @param {bitArray} za2 For initiator, this is peer's ZA; otherwise, it's own ZA
+     * @returns {bitArray} returns the agreed key material
+     */
+    agreedKey: function (keyLen, za1, za2) {
+      const v = sjcl.bitArray.concat(sjcl.bitArray.concat(this._point.toBits(), za1), za2)
+      return sjcl.misc.kdf(keyLen, v)
+    },
+
+    /**
+     * SM2 Key Exchange, calculate the shared secret key
+     * @param {sjcl.ecc.sm2.publicKey} ephemeralPub The peer's ephemeral public key
+     * @param {sjcl.bn} t The implicitSig result
+     * @returns {sjcl.ecc.sm2.publicKey} returns the shared secret key
+     */
+    sharedSecretKey: function (ephemeralPub, t) {
+      const SM2PublicKey = sjcl.ecc.sm2.publicKey
+      const x = ephemeralPub._avf()
+
+      const jacPub = ephemeralPub._point.toJac()
+      const p2 = jacPub.mult(x, ephemeralPub._point).add(this._point.toJac()).toAffine()
+      return new SM2PublicKey(p2.mult(t))
     },
 
     /**

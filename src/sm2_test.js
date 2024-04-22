@@ -132,3 +132,142 @@ test('encryption/decryption', function (t) {
   t.equals(sjcl.codec.utf8String.fromBits(plaintext), 'send reinforcements, we\'re going to advance')
   t.end()
 })
+
+test('SM2 Key Exchange test', function (t) {
+  const initiator = 'Alice'
+  const responder = 'Bob'
+  const keyLen = 8 * 48
+
+  const aliceKeys = sjcl.ecc.sm2.generateKeys(
+    sjcl.codec.hex.toBits('e04c3fd77408b56a648ad439f673511a2ae248def3bab26bdfc9cdbd0ae9607e')
+  ) // share aliceKeys.pub to Bob in advance
+  const aliceEphemeralKeys = sjcl.ecc.sm2.generateKeys(undefined, 6, false) // share aliceEphemeralKeys.pub to Bob per key exchange
+
+  const bobKeys = sjcl.ecc.sm2.generateKeys(
+    sjcl.codec.hex.toBits('7a1136f60d2c5531447e5a3093078c2a505abf74f33aefed927ac0a5b27e7dd7')
+  ) // share bobKeys.pub to Alice in advance
+  const bobEphemeralKeys = sjcl.ecc.sm2.generateKeys(undefined, 6, false) // share bobEphemeralKeys.pub to Alice per key exchange
+
+  const aliceKeyMaterial = bobKeys.pub.sharedSecretKey(
+    bobEphemeralKeys.pub,
+    aliceKeys.sec.implicitSig(
+      aliceEphemeralKeys.sec,
+      aliceEphemeralKeys.pub
+    )
+  ).agreedKey(
+    keyLen,
+    aliceKeys.pub.za(initiator),
+    bobKeys.pub.za(responder)
+  )
+
+  const bobKeyMaterial = aliceKeys.pub.sharedSecretKey(
+    aliceEphemeralKeys.pub,
+    bobKeys.sec.implicitSig(
+      bobEphemeralKeys.sec,
+      bobEphemeralKeys.pub
+    )
+  ).agreedKey(
+    keyLen,
+    aliceKeys.pub.za(initiator),
+    bobKeys.pub.za(responder)
+  )
+  t.equals(sjcl.codec.hex.fromBits(aliceKeyMaterial), sjcl.codec.hex.fromBits(bobKeyMaterial))
+  t.end()
+})
+
+test('SM2 Key Exchange test vector', function (t) {
+  const initiator = 'Alice'
+  const responder = 'Bob'
+  const keyLen = 8 * 48
+
+  const testVector = [
+    {
+      alicePriv:
+        'e04c3fd77408b56a648ad439f673511a2ae248def3bab26bdfc9cdbd0ae9607e',
+      aliceEphemeralPriv:
+        '6fe0bac5b09d3ab10f724638811c34464790520e4604e71e6cb0e5310623b5b1',
+      bobPriv:
+        '7a1136f60d2c5531447e5a3093078c2a505abf74f33aefed927ac0a5b27e7dd7',
+      bobEphemeralPriv:
+        'd0233bdbb0b8a7bfe1aab66132ef06fc4efaedd5d5000692bc21185242a31f6f',
+      sharedSecretKey:
+        '6ab5c9709277837cedc515730d04751ef81c71e81e0e52357a98cf41796ab560508da6e858b40c6264f17943037434174284a847f32c4f54104a98af5148d89f',
+      key: '1ad809ebc56ddda532020c352e1e60b121ebeb7b4e632db4dd90a362cf844f8bba85140e30984ddb581199bf5a9dda22'
+    },
+    {
+      alicePriv:
+        'cb5ac204b38d0e5c9fc38a467075986754018f7dbb7cbbc5b4c78d56a88a8ad8',
+      aliceEphemeralPriv:
+        '1681a66c02b67fdadfc53cba9b417b9499d0159435c86bb8760c3a03ae157539',
+      bobPriv:
+        '4f54b10e0d8e9e2fe5cc79893e37fd0fd990762d1372197ed92dde464b2773ef',
+      bobEphemeralPriv:
+        'a2fe43dea141e9acc88226eaba8908ad17e81376c92102cb8186e8fef61a8700',
+      sharedSecretKey:
+        '677d055355a1dcc9de4df00d3a80b6daa76bdf54ff7e0a3a6359fcd0c6f1e4b4697fffc41bbbcc3a28ea3aa1c6c380d1e92f142233afa4b430d02ab4cebc43b2',
+      key: '7a103ae61a30ed9df573a5febb35a9609cbed5681bcb98a8545351bf7d6824cc4635df5203712ea506e2e3c4ec9b12e7'
+    },
+    {
+      alicePriv:
+        'ee690a34a779ab48227a2f68b062a80f92e26d82835608dd01b7452f1e4fb296',
+      aliceEphemeralPriv:
+        '2046c6cee085665e9f3abeba41fd38e17a26c08f2f5e8f0e1007afc0bf6a2a5d',
+      bobPriv:
+        '8ef49ea427b13cc31151e1c96ae8a48cb7919063f2d342560fb7eaaffb93d8fe',
+      bobEphemeralPriv:
+        '9baf8d602e43fbae83fedb7368f98c969d378b8a647318f8cafb265296ae37de',
+      sharedSecretKey:
+        'f7e9f1447968b284ff43548fcec3752063ea386b48bfabb9baf2f9c1caa05c2fb12c2cca37326ce27e68f8cc6414c2554895519c28da1ca21e61890d0bc525c4',
+      key: 'b18e78e5072f301399dc1f4baf2956c0ed2d5f52f19abb1705131b0865b079031259ee6c629b4faed528bcfa1c5d2cbc'
+    }
+  ]
+
+  for (let i = 0; i < testVector.length; i++) {
+    const aliceKeys = sjcl.ecc.sm2.generateKeys(
+      sjcl.codec.hex.toBits(testVector[i].alicePriv)
+    )
+    const aliceEphemeralKeys = sjcl.ecc.sm2.generateKeys(
+      sjcl.codec.hex.toBits(testVector[i].aliceEphemeralPriv)
+    )
+    const bobKeys = sjcl.ecc.sm2.generateKeys(
+      sjcl.codec.hex.toBits(testVector[i].bobPriv)
+    )
+    const bobEphemeralKeys = sjcl.ecc.sm2.generateKeys(
+      sjcl.codec.hex.toBits(testVector[i].bobEphemeralPriv)
+    )
+
+    const tA = aliceKeys.sec.implicitSig(
+      aliceEphemeralKeys.sec,
+      aliceEphemeralKeys.pub
+    )
+    const aliceSecretKey = bobKeys.pub.sharedSecretKey(
+      bobEphemeralKeys.pub,
+      tA
+    )
+    t.equals(aliceSecretKey.serialize().point, testVector[i].sharedSecretKey)
+    const aliceSharedKey = aliceSecretKey.agreedKey(
+      keyLen,
+      aliceKeys.pub.za(initiator),
+      bobKeys.pub.za(responder)
+    )
+    t.equals(sjcl.codec.hex.fromBits(aliceSharedKey), testVector[i].key)
+
+    const tB = bobKeys.sec.implicitSig(
+      bobEphemeralKeys.sec,
+      bobEphemeralKeys.pub
+    )
+    const bobSecretKey = aliceKeys.pub.sharedSecretKey(
+      aliceEphemeralKeys.pub,
+      tB
+    )
+    t.equals(bobSecretKey.serialize().point, testVector[i].sharedSecretKey)
+    const bobSharedKey = bobSecretKey.agreedKey(
+      keyLen,
+      aliceKeys.pub.za(initiator),
+      bobKeys.pub.za(responder)
+    )
+    t.equals(sjcl.codec.hex.fromBits(bobSharedKey), testVector[i].key)
+  }
+
+  t.end()
+})
