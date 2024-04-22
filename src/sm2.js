@@ -225,7 +225,7 @@ function bindSM2 (sjcl) {
       const R = this._curve.r
       return ephemeralPrivateKey._exponent.mul(ephemeralPubKey._avf()).add(this._exponent).mod(R)
     },
-    
+
     getType: function () {
       return 'sm2'
     }
