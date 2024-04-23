@@ -98,5 +98,19 @@ test('SM3 basic', function (t) {
     ),
     '73a48625d3758fa37b3eab80e9cfcaba665e3199ea15a1fa8189d96f579125e4'
   )
+
+  // GB/T 32918.4-2016 A.3 Example 2
+  t.equal(
+    sjcl.codec.hex.fromBits(
+      sjcl.hash.sm3.hash(
+        sjcl.codec.bytes.toBits(
+          new Uint8Array(Buffer.from(
+            '0083E628CF701EE3141E8873FE55936ADF24963F5DC9C6480566C80F8A1D8CC51B656E6372797074696F6E207374616E6461726401524C647F0C0412DEFD468BDA3AE0E5A80FCC8F5C990FEE11602929232DCD9F36'
+            , 'hex')
+          )))
+    ),
+    '73a48625d3758fa37b3eab80e9cfcaba665e3199ea15a1fa8189d96f579125e4'
+  )
+
   t.end()
 })

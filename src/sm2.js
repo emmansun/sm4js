@@ -283,7 +283,7 @@ function bindSM2 (sjcl) {
       const x = ephemeralPub._avf()
 
       const jacPub = ephemeralPub._point.toJac()
-      const p2 = jacPub.mult(x, ephemeralPub._point).add(this._point.toJac()).toAffine()
+      const p2 = jacPub.mult(x, ephemeralPub._point).add(this._point).toAffine()
       return new SM2PublicKey(p2.mult(t))
     },
 
