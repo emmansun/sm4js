@@ -1,9 +1,11 @@
-# sm4js
+# sm4js (sjcl-sm)
 [![SM4JS CI](https://github.com/emmansun/sm4js/actions/workflows/ci.yml/badge.svg)](https://github.com/emmansun/sm4js/actions/workflows/ci.yml)
 [![npm version](https://badge.fury.io/js/gmsm-sm4js.svg)](https://badge.fury.io/js/gmsm-sm4js)
 [![NPM Downloads][npm-downloads-image]][npm-url]
 
 **A Simple Pure JavaScript GM-Standards SM2/SM3/SM4 Implementation based on [sjcl](https://github.com/bitwiseshiftleft/sjcl).**
+
+您也可以参考另外一个实现：[jsrsasign-sm](https://github.com/emmansun/sm2js)。
 
 ## SM2
 - 加解密
