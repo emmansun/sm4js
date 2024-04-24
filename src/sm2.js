@@ -157,7 +157,7 @@ function bindSM2 (sjcl) {
      * @param {bitArray} hash hash to sign.
      * @param {int} paranoia paranoia for random number generation
      */
-    signHash: function (hash, paranoia = 6, fixedKForTesting) {
+    signHash: function (hash, paranoia = 6) {
       if (sjcl.bitArray.bitLength(hash) > this._curveBitLength) {
         hash = sjcl.bitArray.clamp(hash, this._curveBitLength)
       }
@@ -165,7 +165,7 @@ function bindSM2 (sjcl) {
       if (!this._dp1Inv) {
         this._dp1Inv = this._exponent.add(one).inverseMod(R)
       }
-      const k = fixedKForTesting || sjcl.bn.random(R.sub(one), paranoia).add(1)
+      const k = sjcl.bn.random(R.sub(one), paranoia).add(1)
       let r = this._curve.G.mult(k).x.mod(R)
       r = sjcl.bn.fromBits(hash).add(r).mod(R)
       if (r.equals(0)) {
@@ -348,13 +348,13 @@ function bindSM2 (sjcl) {
      * @param {String|bitArray} msg The data used for encryption
      * @param {int} paranoia paranoia for random number generation
      */
-    encrypt: function (msg, paranoia = 6, fixedKForTesting) {
+    encrypt: function (msg, paranoia = 6) {
       if (typeof msg === 'string') {
         msg = sjcl.codec.utf8String.toBits(msg)
       }
       const R = this._curve.r
       const msgLen = sjcl.bitArray.bitLength(msg)
-      const k = fixedKForTesting || sjcl.bn.random(R.sub(one), paranoia).add(1)
+      const k = sjcl.bn.random(R.sub(one), paranoia).add(1)
       const c1 = this._curve.G.mult(k)
       const point = this._point.mult(k)
 
