@@ -1,6 +1,6 @@
 const test = require('tape')
 const sjcl = require('sjcl-with-all')
-require('./sm4').bindSM4(sjcl)
+require('../src/sm4').bindSM4(sjcl)
 const SM4 = sjcl.cipher.sm4
 
 test('test sample 1', (t) => {

@@ -1,7 +1,7 @@
 const test = require('tape')
 const sjcl = require('sjcl-with-all')
-require('./sm3').bindSM3(sjcl)
-require('./kdf').bindKDF(sjcl)
+require('../src/sm3').bindSM3(sjcl)
+require('../src/kdf').bindKDF(sjcl)
 
 test('KDF basic', function (t) {
   t.equal(

@@ -1,6 +1,6 @@
 const test = require('tape')
 const sjcl = require('sjcl-with-all')
-require('./sm3').bindSM3(sjcl)
+require('../src/sm3').bindSM3(sjcl)
 
 test('SM3 basic', function (t) {
   const testVector = [

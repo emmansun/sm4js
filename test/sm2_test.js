@@ -1,8 +1,8 @@
 const test = require('tape')
 const sjcl = require('sjcl-with-all')
-require('./sm3').bindSM3(sjcl)
-require('./kdf').bindKDF(sjcl)
-require('./sm2').bindSM2(sjcl)
+require('../src/sm3').bindSM3(sjcl)
+require('../src/kdf').bindKDF(sjcl)
+require('../src/sm2').bindSM2(sjcl)
 
 test('SM2 public key', function (t) {
   const SM2PublicKey = sjcl.ecc.sm2.publicKey
