@@ -84,7 +84,6 @@ test('ASN1 parser basic', function (t) {
                !input1.out.readASN1IntBytes(c9) ||
                !input1.out.isEmpty()
 
-
   t.notOk(fail)
   t.deepEqual(c1.out, [1, 2, 3])
   t.deepEqual(c2.out, [4, 5, 6])
@@ -95,6 +94,6 @@ test('ASN1 parser basic', function (t) {
   t.ok(c6.out)
   t.notOk(c7.out)
   t.deepEqual(c8.out, [0x01, 0x02, 0x03, 0x04, 0x05, 0x06])
-  t.deepEqual(c9.out, [0x00, 0xf1, 0x02, 0x03, 0x04, 0x05, 0x06])  
+  t.deepEqual(c9.out, [0x00, 0xf1, 0x02, 0x03, 0x04, 0x05, 0x06])
   t.end()
 })
