@@ -1,8 +1,11 @@
 /** @fileOverview Low-level SM2 implementation.
  *  @author Emman Sun
  */
+const { Builder, Parser } = require('./asn1')
 
 function bindSM2 (sjcl) {
+  require('./bn_patch').patchBN(sjcl)
+  require('./bytescodecHex').bindBytesCodecHex(sjcl)
   if (sjcl.ecc.curves.sm2p256v1) return
 
   const sbp = sjcl.bn.pseudoMersennePrime
@@ -156,8 +159,24 @@ function bindSM2 (sjcl) {
     /** SM2 sign hash function
      * @param {bitArray} hash hash to sign.
      * @param {int} paranoia paranoia for random number generation
+     * @param {string} type signature type, default asn1, also can use rs which means r||s
+     * @return {string} hex signature string
      */
-    signHash: function (hash, paranoia = 6) {
+    signHash: function (hash, paranoia = 6, type = 'asn1') {
+      const l = this._curve.r.bitLength()
+      const rs = this._signHashInternal(hash, paranoia)
+      if (type === 'asn1') {
+        const builder = new Builder()
+        builder.addASN1Sequence((b) => {
+          b.addASN1IntBytes(sjcl.codec.bytes.fromBits(rs.r.toBits(l)))
+          b.addASN1IntBytes(sjcl.codec.bytes.fromBits(rs.s.toBits(l)))
+        })
+        return sjcl.bytescodec.hex.fromBytes(builder.bytes())
+      }
+      return sjcl.codec.hex.fromBits(sjcl.bitArray.concat(rs.r.toBits(l), rs.s.toBits(l)))
+    },
+
+    _signHashInternal: function (hash, paranoia = 6) {
       if (sjcl.bitArray.bitLength(hash) > this._curveBitLength) {
         hash = sjcl.bitArray.clamp(hash, this._curveBitLength)
       }
@@ -180,30 +199,64 @@ function bindSM2 (sjcl) {
       if (s.equals(0)) {
         throw new Error('sign failed, pls retry 3')
       }
-      const l = R.bitLength()
-      return sjcl.bitArray.concat(r.toBits(l), s.toBits(l))
+      return { r, s }
     },
 
     /**
      * Decrypt the ciphertext
-     * @param {bitArray} ciphertext The ciphertext to decrypt.
+     * @param {string} ciphertext The hex ciphertext to decrypt.
+     * @returns {bitArray} The plaintext.
+     * @throws {Error} If the decryption fails.
      */
     decrypt: function (ciphertext) {
-      if (sjcl.bitArray.bitLength(ciphertext) <= (96 * 8)) {
+      if (typeof ciphertext !== 'string') {
         throw new Error('invalid ciphertext')
       }
-      const c1 = sjcl.bitArray.bitSlice(ciphertext, 0, 64 * 8)
-      const c3 = sjcl.bitArray.bitSlice(ciphertext, 64 * 8, 96 * 8)
-      const c2 = sjcl.bitArray.bitSlice(ciphertext, 96 * 8)
+      let c2, c3, point
+      if (ciphertext.startsWith('30')) {
+        // asn1 type
+        const input = new Parser(sjcl.bytescodec.hex.toBytes(ciphertext))
+        const xstr = {}
+        const ystr = {}
+        const c3str = {}
+        const c2str = {}
+        const inner = {}
+        const fail = !input.readASN1Sequence(inner) ||
+                            !input.isEmpty() ||
+                            !inner.out.readASN1IntBytes(xstr) ||
+                            !inner.out.readASN1IntBytes(ystr) ||
+                            !inner.out.readASN1OctetString(c3str) ||
+                            !inner.out.readASN1OctetString(c2str) ||
+                            !inner.out.isEmpty()
+        if (fail) {
+          throw new Error('decryption error')
+        }
+        c3 = sjcl.codec.bytes.toBits(c3str.out)
+        c2 = sjcl.codec.bytes.toBits(c2str.out)
+        const ECCPoint = sjcl.ecc.point
+        const CorruptException = sjcl.exception.corrupt
+        const BigInt = sjcl.bn
+        point = new ECCPoint(this._curve, new BigInt(`0x${sjcl.bytescodec.hex.fromBytes(xstr.out)}`), new BigInt(`0x${sjcl.bytescodec.hex.fromBytes(ystr.out)}`))
+        if (!point.isValid()) {
+          throw new CorruptException('not on the curve!')
+        }
+        point = point.mult(this._exponent)
+      } else {
+        if (ciphertext.startsWith('04')) {
+          ciphertext = ciphertext.substring(2)
+        }
+        ciphertext = sjcl.codec.hex.toBits(ciphertext)
+        point = this._curve.fromBits(sjcl.bitArray.bitSlice(ciphertext, 0, 64 * 8)).mult(this._exponent)
+        c3 = sjcl.bitArray.bitSlice(ciphertext, 64 * 8, 96 * 8)
+        c2 = sjcl.bitArray.bitSlice(ciphertext, 96 * 8)
+      }
       const msgLen = sjcl.bitArray.bitLength(c2)
-
-      const point = this._curve.fromBits(c1).mult(this._exponent)
-
       let plaintext = sjcl.misc.kdf(msgLen, point.toBits())
       for (let i = 0; i < plaintext.length; i++) {
         plaintext[i] ^= c2[i]
       }
       plaintext = sjcl.bitArray.clamp(plaintext, msgLen)
+
       const SM3 = sjcl.hash.sm3
       const hash = new SM3()
       hash.update(point.x.toBits())
@@ -308,29 +361,52 @@ function bindSM2 (sjcl) {
 
     /** SM2 verify function
      * @param {String|bitArray} data The data used for hash
-     * @param {bitArray} rs signature bitArray.
+     * @param {string} signature the hex signature string
+     * @param {string} type the signature type, default asn1, also can use rs which means r||s.
      * @param {String|bitArray} uid The uid used for ZA
      * @returns {Boolean} verify result
      */
-    verify: function (msg, rs, uid) {
-      return this.verifyHash(this.hash(msg, uid), rs)
+    verify: function (msg, signature, type = 'asn1', uid) {
+      return this.verifyHash(this.hash(msg, uid), signature, type)
     },
 
     /**
      * SM2 verify hash function
      * @param {bitArray} hashValue The hash value.
-     * @param {bitArray} rs signature bitArray.
+     * @param {string} signature the hex signature string
+     * @param {string} type the signature type, default asn1, also can use rs which means r||s.
      * @returns {Boolean} verify result
      */
-    verifyHash: function (hashValue, rs) {
-      if (sjcl.bitArray.bitLength(hashValue) > this._curveBitLength) {
-        hashValue = sjcl.bitArray.clamp(hashValue, this._curveBitLength)
+    verifyHash: function (hashValue, signature, type = 'asn1') {
+      if (typeof signature !== 'string') {
+        return false
       }
-      const w = sjcl.bitArray
+      const BigInt = sjcl.bn
+      let r, ss
+      if (type === 'asn1') {
+        const input = new Parser(sjcl.bytescodec.hex.toBytes(signature))
+        const c1 = {}
+        const c2 = {}
+        const inner = {}
+        const fail = !input.readASN1Sequence(inner) ||
+                            !input.isEmpty() ||
+                            !inner.out.readASN1IntBytes(c1) ||
+                            !inner.out.readASN1IntBytes(c2) ||
+                            !inner.out.isEmpty()
+        if (fail) {
+          return false
+        }
+        r = new BigInt(`0x${sjcl.bytescodec.hex.fromBytes(c1.out)}`)
+        ss = new BigInt(`0x${sjcl.bytescodec.hex.fromBytes(c2.out)}`)
+      } else {
+        if (this._curveBitLength !== signature.length << 1) {
+          return false
+        }
+        const l = signature.length / 2
+        r = new BigInt(`0x${signature.substring(0, l)}`)
+        ss = new BigInt(`0x${signature.substring(l)}`)
+      }
       const R = this._curve.r
-      const l = this._curveBitLength
-      const r = sjcl.bn.fromBits(w.bitSlice(rs, 0, l))
-      const ss = sjcl.bn.fromBits(w.bitSlice(rs, l, 2 * l))
       if (r.equals(0) || ss.equals(0) || r.greaterEquals(R) || ss.greaterEquals(R)) {
         return false
       }
@@ -347,8 +423,10 @@ function bindSM2 (sjcl) {
      * Encrypt message
      * @param {String|bitArray} msg The data used for encryption
      * @param {int} paranoia paranoia for random number generation
+     * @param {string} outputType the ciphertext type, default is asn1, also support c1c3c2
+     * @returns {string} hex string of ciphertext
      */
-    encrypt: function (msg, paranoia = 6) {
+    encrypt: function (msg, paranoia = 6, outputType = 'asn1') {
       if (typeof msg === 'string') {
         msg = sjcl.codec.utf8String.toBits(msg)
       }
@@ -371,7 +449,18 @@ function bindSM2 (sjcl) {
       hash.update(point.x.toBits())
       hash.update(msg)
       hash.update(point.y.toBits())
-      return sjcl.bitArray.concat(sjcl.bitArray.concat(c1.toBits(), hash.finalize()), ciphertext)
+
+      if (outputType === 'asn1') {
+        const builder = new Builder()
+        builder.addASN1Sequence((b) => {
+          b.addASN1IntBytes(c1.x.toBytes())
+          b.addASN1IntBytes(c1.y.toBytes())
+          b.addASN1OctetString(sjcl.codec.bytes.fromBits(hash.finalize()))
+          b.addASN1OctetString(sjcl.codec.bytes.fromBits(ciphertext))
+        })
+        return sjcl.bytescodec.hex.fromBytes(builder.bytes())
+      }
+      return `04${sjcl.codec.hex.fromBits(sjcl.bitArray.concat(sjcl.bitArray.concat(c1.toBits(), hash.finalize()), ciphertext))}`
     },
 
     getType: function () {

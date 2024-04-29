@@ -11,7 +11,7 @@
     ],
     "main": "index.js",
     "scripts": {
-        "test": "standard && node test/asn1_test.js && node test/sm3_test.js && node test/sm4_test.js && node test/kdf_test.js && node test/sm2_test.js"
+        "test": "standard && node test/bn_patch_test.js && node test/asn1_test.js && node test/sm3_test.js && node test/sm4_test.js && node test/kdf_test.js && node test/sm2_test.js"
     },
     "devDependencies": {
         "sjcl-with-all": "^1.0.8",

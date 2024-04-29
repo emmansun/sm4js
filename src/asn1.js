@@ -141,16 +141,16 @@ class Builder {
       let lenLen, lenByte
       if (length > 0x00fffffffe) {
         throw new Error('pending ASN.1 child too long')
-      } else if (lenLen >= 0x1000000) {
+      } else if (length >= 0x1000000) {
         lenLen = 5
         lenByte = 0x80 | 0x04
-      } else if (lenLen >= 0x10000) {
+      } else if (length >= 0x10000) {
         lenLen = 4
         lenByte = 0x80 | 0x03
-      } else if (lenLen >= 0x100) {
+      } else if (length >= 0x100) {
         lenLen = 3
         lenByte = 0x80 | 0x02
-      } else if (lenLen >= 0x80) {
+      } else if (length >= 0x80) {
         lenLen = 2
         lenByte = 0x80 | 0x01
       } else {
@@ -162,17 +162,15 @@ class Builder {
       child.offset++
       child.pendingLenLen = lenLen - 1
     }
-    const l = length
-    if (child.pendingLenLen > 0) {
-      let l = length
-      for (let i = child.pendingLenLen - 1; i >= 0; i--) {
-        child.result.splice(child.offset, 0, l & 0xff)
-        l = l >>> 8
-      }
+
+    let l = length
+    for (let i = child.pendingLenLen - 1; i >= 0; i--) {
+      child.result.splice(child.offset, 0, l & 0xff)
+      l = l >>> 8
     }
     if (l !== 0) {
       throw new Error(
-        `pending child length ${length} exceeds ${child.pendingLenLen}-byte lehgth profix`
+        `pending child length ${length} exceeds ${child.pendingLenLen}-byte length profix`
       )
     }
     this.result = child.result
@@ -419,7 +417,7 @@ class Parser {
       return { success: false }
     }
     let value = 0
-    for (let i = 0; i < value; i++) {
+    for (let i = 0; i < length; i++) {
       value = (value << 8) | v[i]
     }
     return { success: true, value: value >>> 0 }

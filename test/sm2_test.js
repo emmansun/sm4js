@@ -86,7 +86,7 @@ test('verify hash', function (t) {
       '46bb0b1f6e732e6d8b228ead8af64cf5a7cba6b497e9308a02640902b00eed53ad6725b83d0c1f693b14205ec85c4146e2223c6cdb93430332914ccbbb6ca910'
     )
   )
-  t.true(pk.verifyHash(sjcl.codec.hex.toBits('66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0'), sjcl.codec.hex.toBits('757984E0A063394EE0792B52172DD4273C05E2A66D734FF804A37B9AC639C098D9739A8D7A37FC88A1B4210998DA489AD5B0DEE1C8CB9097E532318ADED5D204')))
+  t.true(pk.verifyHash(sjcl.codec.hex.toBits('66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0'), '757984E0A063394EE0792B52172DD4273C05E2A66D734FF804A37B9AC639C098D9739A8D7A37FC88A1B4210998DA489AD5B0DEE1C8CB9097E532318ADED5D204', 'rs'))
   t.end()
 })
 
@@ -97,11 +97,11 @@ test('verify message', function (t) {
       '8356e642a40ebd18d29ba3532fbd9f3bbee8f027c3f6f39a5ba2f870369f9988981f5efe55d1c5cdf6c0ef2b070847a14f7fdf4272a8df09c442f3058af94ba1'
     )
   )
-  t.true(pk.verify('ShangMi SM2 Sign Standard', sjcl.codec.hex.toBits('5B3A799BD94C9063120D7286769220AF6B0FA127009AF3E873C0E8742EDC5F89097968A4C8B040FD548D1456B33F470CABD8456BFEA53E8A828F92F6D4BDCD77')))
+  t.true(pk.verify('ShangMi SM2 Sign Standard', '5B3A799BD94C9063120D7286769220AF6B0FA127009AF3E873C0E8742EDC5F89097968A4C8B040FD548D1456B33F470CABD8456BFEA53E8A828F92F6D4BDCD77', 'rs'))
   t.end()
 })
 
-test('sign/verify', function (t) {
+test('default(asn1) sign/verify', function (t) {
   const BigInt = sjcl.bn
   const keys = sjcl.ecc.sm2.generateKeys(
     new BigInt('0x6c5a0a0b2eed3cbec3e4f1252bfe0e28c504a1c6bf1999eebb0af9ef0f8e6c85')
@@ -117,12 +117,34 @@ test('decryption', function (t) {
   const keys = sjcl.ecc.sm2.generateKeys(
     new BigInt('0x6c5a0a0b2eed3cbec3e4f1252bfe0e28c504a1c6bf1999eebb0af9ef0f8e6c85')
   )
-  const plaintext = keys.sec.decrypt(sjcl.codec.hex.toBits('BD31001CE8D39A4A0119FF96D71334CD12D8B75BBC780F5BFC6E1EFAB535E85A1839C075FF8BF761DCBE185C9750816410517001D6A130F6AB97FB23337CCE15EA82BD58D6A5394EB468A769AB48B6A26870CA075377EB06663780C920EA5EE0E22ABCF48E56AE9D29AC770D9DE0D6B7094A874A2F8D26C26E0B1DAAF4FF50A484B88163D04785B04585BB'))
+  const plaintext = keys.sec.decrypt('04BD31001CE8D39A4A0119FF96D71334CD12D8B75BBC780F5BFC6E1EFAB535E85A1839C075FF8BF761DCBE185C9750816410517001D6A130F6AB97FB23337CCE15EA82BD58D6A5394EB468A769AB48B6A26870CA075377EB06663780C920EA5EE0E22ABCF48E56AE9D29AC770D9DE0D6B7094A874A2F8D26C26E0B1DAAF4FF50A484B88163D04785B04585BB')
   t.equals(sjcl.codec.utf8String.fromBits(plaintext), 'send reinforcements, we\'re going to advance')
   t.end()
 })
 
 test('encryption/decryption', function (t) {
+  const BigInt = sjcl.bn
+  const keys = sjcl.ecc.sm2.generateKeys(
+    new BigInt('0x6c5a0a0b2eed3cbec3e4f1252bfe0e28c504a1c6bf1999eebb0af9ef0f8e6c85')
+  )
+  const ciphertext = keys.pub.encrypt('send reinforcements, we\'re going to advance', 6, 'c1c3c2')
+  const plaintext = keys.sec.decrypt(ciphertext)
+  t.equals(sjcl.codec.utf8String.fromBits(plaintext), 'send reinforcements, we\'re going to advance')
+  t.end()
+})
+
+test('encryption/decryption (asn1)', function (t) {
+  const BigInt = sjcl.bn
+  const keys = sjcl.ecc.sm2.generateKeys(
+    new BigInt('0x6c5a0a0b2eed3cbec3e4f1252bfe0e28c504a1c6bf1999eebb0af9ef0f8e6c85')
+  )
+  const ciphertext = keys.pub.encrypt('send reinforcements, we\'re going to advance', 6, 'asn1')
+  const plaintext = keys.sec.decrypt(ciphertext)
+  t.equals(sjcl.codec.utf8String.fromBits(plaintext), 'send reinforcements, we\'re going to advance')
+  t.end()
+})
+
+test('encryption/decryption (default asn1)', function (t) {
   const BigInt = sjcl.bn
   const keys = sjcl.ecc.sm2.generateKeys(
     new BigInt('0x6c5a0a0b2eed3cbec3e4f1252bfe0e28c504a1c6bf1999eebb0af9ef0f8e6c85')
