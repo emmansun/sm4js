@@ -35,3 +35,35 @@ test('bn toBytes basic', function (t) {
   )
   t.end()
 })
+
+test('bn fromBytes basic', function (t) {
+  t.deepEqual(
+    sjcl.bn.fromBytes(sjcl.bytescodec.hex.toBytes('ffffffffffffffffffffffffffffffff')),
+    new BigInt('0xffffffffffffffffffffffffffffffff')
+  )
+  t.deepEqual(
+    sjcl.bn.fromBytes(sjcl.bytescodec.hex.toBytes('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')),
+    new BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+  )
+  t.deepEqual(
+    sjcl.bn.fromBytes([0xff]),
+    new BigInt('0xff')
+  )
+  t.deepEqual(
+    sjcl.bn.fromBytes([0xff, 0xff]),
+    new BigInt('0xffff')
+  )
+  t.deepEqual(
+    sjcl.bn.fromBytes([0xff, 0xff, 0xff]),
+    new BigInt('0xffffff')
+  )
+  t.deepEqual(
+    sjcl.bn.fromBytes([0xff, 0xff, 0xff, 0xff]),
+    new BigInt('0xffffffff')
+  )
+  t.deepEqual(
+    sjcl.bn.fromBytes(),
+    new BigInt()
+  )
+  t.end()
+})

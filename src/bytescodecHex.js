@@ -22,7 +22,7 @@ function bindBytesCodecHex (sjcl) {
       }
       const res = []
       for (let i = 0; i < hexStr.length; i += 2) {
-        res.push(parseInt(hexStr.substr(i, 2), 16))
+        res.push(parseInt(hexStr.substring(i, i + 2), 16))
       }
       return res
     }

@@ -16,6 +16,29 @@ function patchBN (sjcl) {
     }
     return result
   }
+
+  sjcl.bn.fromBytes = function (bytes) {
+    const Class = this
+    const out = new Class()
+    if (!Array.isArray(bytes) || bytes.length === 0) {
+      out.limbs = [0]
+      return out
+    }
+    out.limbs = []
+    const k = out.radix / 8
+    const len = bytes.length
+    for (let i = 0; i < len; i += k) {
+      const end = len - i
+      const start = Math.max(end - k, 0)
+      let tmp = 0
+      for (let j = start; j < end; j++) {
+        tmp = tmp << 8 | (bytes[j] & 0xff)
+      }
+      out.limbs.push(tmp)
+    }
+
+    return out
+  }
 }
 
 module.exports = {
