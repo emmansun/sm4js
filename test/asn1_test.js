@@ -68,3 +68,26 @@ test('ASN1 parser basic', function (t) {
   t.deepEqual(c9.out, [0x00, 0xf1, 0x02, 0x03, 0x04, 0x05, 0x06])
   t.end()
 })
+
+test('Bytes', function (t) {
+  const b = new Builder()
+  b.addBytes(['f', 'o', 'o'])
+  b.addBytes(['b'])
+  b.addBytes(['a', 'r', 'b', 'a', 'z'])
+  const s = new Parser(b.bytes())
+
+  let w = s.readBytes(3)
+  t.ok(w.success)
+  t.deepEqual(w.value, ['f', 'o', 'o'])
+
+  w = s.readBytes(3)
+  t.ok(w.success)
+  t.deepEqual(w.value, ['b', 'a', 'r'])
+
+  w = s.readBytes(3)
+  t.ok(w.success)
+  t.deepEqual(w.value, ['b', 'a', 'z'])
+
+  t.ok(s.isEmpty())
+  t.end()
+})
