@@ -5,7 +5,7 @@
 
 **A Simple Pure JavaScript GM-Standards SM2/SM3/SM4 Implementation based on [sjcl](https://github.com/bitwiseshiftleft/sjcl).**
 
-您也可以参考另外一个实现：[jsrsasign-sm](https://github.com/emmansun/sm2js)。
+扩展sjcl实现的优势在于其丰富的对称加密模式实现，以及其简洁的代码、较好的性能。“缺点”在于其目前缺乏PKI、PKCS8、CSR、CERT等的高级功能支持。您也可以参考另外一个实现：[jsrsasign-sm](https://github.com/emmansun/sm2js)。
 
 ## SM2
 - 加解密
