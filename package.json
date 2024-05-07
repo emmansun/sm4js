@@ -1,6 +1,6 @@
 {
     "name": "gmsm-sm4js",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "Pure Javascript implementation of the SM2/SM3/SM4 cipher based on sjcl",
     "keywords": [
         "sm2",
@@ -11,7 +11,7 @@
     ],
     "main": "index.js",
     "scripts": {
-        "test": "standard && node test/bn_patch_test.js && node test/asn1_test.js && node test/sm3_test.js && node test/sm4_test.js && node test/kdf_test.js && node test/sm2_test.js"
+        "test": "standard && node test/bn_patch_test.js && node test/asn1_test.js && node test/sm3_test.js && node test/sm4_test.js && node test/kdf_test.js && node test/sm2_test.js && node test/pkix_test.js && node test/pkcs8_test.js"
     },
     "devDependencies": {
         "sjcl-with-all": "^1.0.8",

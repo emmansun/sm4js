@@ -4,9 +4,9 @@
 const { Builder, Parser } = require('./asn1')
 
 function bindSM2 (sjcl) {
+  if (sjcl.ecc.curves.sm2p256v1) return
   require('./bn_patch').patchBN(sjcl)
   require('./bytescodecHex').bindBytesCodecHex(sjcl)
-  if (sjcl.ecc.curves.sm2p256v1) return
 
   const sbp = sjcl.bn.pseudoMersennePrime
   sjcl.bn.prime.sm2p256v1 = sbp(256, [
@@ -24,6 +24,8 @@ function bindSM2 (sjcl) {
     '0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7',
     '0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0'
   )
+
+  sjcl.ecc.curves.sm2p256v1.oid = '1.2.156.10197.1.301'
 
   const BigInt = sjcl.bn
   const sm2Curve = sjcl.ecc.curves.sm2p256v1
@@ -188,16 +190,16 @@ function bindSM2 (sjcl) {
       let r = this._curve.G.mult(k).x.mod(R)
       r = sjcl.bn.fromBits(hash).add(r).mod(R)
       if (r.equals(0)) {
-        throw new Error('sign failed, pls retry 1')
+        throw new Error('sm2: sign failed, pls retry 1')
       }
       const t = r.add(k).mod(R)
       if (t.equals(0)) {
-        throw new Error('sign failed, pls retry 2')
+        throw new Error('sm2: sign failed, pls retry 2')
       }
       let s = r.mul(this._exponent)
       s = k.sub(s).mul(this._dp1Inv).mod(R)
       if (s.equals(0)) {
-        throw new Error('sign failed, pls retry 3')
+        throw new Error('sm2: sign failed, pls retry 3')
       }
       return { r, s }
     },
@@ -210,7 +212,7 @@ function bindSM2 (sjcl) {
      */
     decrypt: function (ciphertext) {
       if (typeof ciphertext !== 'string') {
-        throw new Error('invalid ciphertext')
+        throw new Error('sm2: invalid ciphertext')
       }
       const SM3 = sjcl.hash.sm3
       const hash = new SM3()
@@ -231,7 +233,7 @@ function bindSM2 (sjcl) {
                             !inner.out.readASN1OctetString(c2str) ||
                             !inner.out.isEmpty()
         if (fail) {
-          throw new Error('decryption error')
+          throw new Error('sm2: decryption error')
         }
         c3 = sjcl.codec.bytes.toBits(c3str.out)
         c2 = sjcl.codec.bytes.toBits(c2str.out)
@@ -240,7 +242,7 @@ function bindSM2 (sjcl) {
         const BigInt = sjcl.bn
         point = new ECCPoint(this._curve, BigInt.fromBytes(xstr.out), BigInt.fromBytes(ystr.out))
         if (!point.isValid()) {
-          throw new CorruptException('not on the curve!')
+          throw new CorruptException('sm2: not on the curve!')
         }
         point = point.mult(this._exponent)
       } else {
@@ -251,7 +253,7 @@ function bindSM2 (sjcl) {
         const pointBitLen = this._curveBitLength << 1
         const c2start = pointBitLen + sjcl.bitArray.bitLength(hash._h)
         if (sjcl.bitArray.bitLength(ciphertext) <= c2start) {
-          throw new Error('decryption error')
+          throw new Error('sm2: decryption error')
         }
         point = this._curve.fromBits(sjcl.bitArray.bitSlice(ciphertext, 0, pointBitLen)).mult(this._exponent)
         c3 = sjcl.bitArray.bitSlice(ciphertext, pointBitLen, c2start)
@@ -268,7 +270,7 @@ function bindSM2 (sjcl) {
       hash.update(plaintext)
       hash.update(point.y.toBits())
       if (!sjcl.bitArray.equal(c3, hash.finalize())) {
-        throw new Error('decryption error')
+        throw new Error('sm2: decryption error')
       }
       return plaintext
     },
@@ -447,7 +449,7 @@ function bindSM2 (sjcl) {
       }
       ciphertext = sjcl.bitArray.clamp(ciphertext, msgLen)
       if (sjcl.bitArray.equal(ciphertext, msg)) {
-        throw new Error('encryption error, pls try again')
+        throw new Error('sm2: encryption error, pls try again')
       }
       const SM3 = sjcl.hash.sm3
       const hash = new SM3()

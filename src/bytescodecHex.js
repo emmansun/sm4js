@@ -3,8 +3,11 @@
  */
 
 function bindBytesCodecHex (sjcl) {
-  sjcl.bytescodec = sjcl.bytescodec || {}
-  sjcl.bytescodec.hex = sjcl.bytescodec.hex || {
+  if (sjcl.bytescodec) {
+    return
+  }
+  sjcl.bytescodec = {}
+  sjcl.bytescodec.hex = {
     fromBytes: function (arr) {
       let res = ''
       for (let i = 0; i < arr.length; i++) {
