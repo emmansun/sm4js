@@ -5,7 +5,7 @@
 
 **A Simple Pure JavaScript GM-Standards SM2/SM3/SM4 Implementation based on [sjcl](https://github.com/bitwiseshiftleft/sjcl).**
 
-扩展sjcl实现的优势在于其丰富的对称加密模式实现，以及其简洁的代码、较好的性能。“缺点”在于其目前缺乏PKIX、PKCS8、CSR、CERT等的高级功能支持。您也可以参考另外一个实现：[jsrsasign-sm](https://github.com/emmansun/sm2js)。
+扩展sjcl实现的优势在于其丰富的对称加密模式实现，以及其简洁的代码、较好的性能。“缺点”在于其缺乏CSR、CERT等高级功能支持。您也可以参考另外一个实现：[jsrsasign-sm](https://github.com/emmansun/sm2js)。
 
 ## SM2
 - 加解密
@@ -13,6 +13,12 @@
 - 密钥交换
 
 具体使用方法，请参考[sm2_test.js](https://github.com/emmansun/sm4js/blob/master/test/sm2_test.js "sm2_test.js")
+
+## 公私钥处理
+- PKIX EC公钥解析、构造
+- SEC1 EC私钥解析、构造
+- PKCS#8私钥解析、构造（不加密）
+- PKCS#8私钥解析、构造（加密）。支持PBES2/PBKDF2，HMAC HASH支持SHA1/SHA256/SHA521/SM3，加解密支持SM4/AES，加密模式支持CBC/GCM
 
 ## SM3
 位于**sjcl.hash.sm3**中，使用方式和其它哈希算法相同。具体使用方法，请参考[sm3_test.js](https://github.com/emmansun/sm4js/blob/master/test/sm3_test.js "sm3_test.js")
