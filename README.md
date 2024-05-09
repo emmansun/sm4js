@@ -18,7 +18,7 @@
 - PKIX EC公钥解析、构造
 - SEC1 EC私钥解析、构造
 - PKCS#8私钥解析、构造（不加密）
-- PKCS#8私钥解析、构造（加密）。支持PBES2/PBKDF2，HMAC HASH支持SHA1/SHA256/SHA521/SM3，加解密支持SM4/AES，加密模式支持CBC/GCM
+- PKCS#8私钥解析、构造（加密）。支持PBES2/PBKDF2，HMAC HASH支持SHA1/SHA256/SHA512/SM3，加解密支持SM4/AES，加密模式支持CBC/GCM
 
 ## SM3
 位于**sjcl.hash.sm3**中，使用方式和其它哈希算法相同。具体使用方法，请参考[sm3_test.js](https://github.com/emmansun/sm4js/blob/master/test/sm3_test.js "sm3_test.js")
