@@ -176,3 +176,122 @@ test('ASN1 parser basic', function (t) {
   t.deepEqual(c9.out, [0x00, 0xf1, 0x02, 0x03, 0x04, 0x05, 0x06])
   t.end()
 })
+
+test('addASN1Unsigned test', function (t) {
+  let builder = new Builder()
+  builder.addASN1Unsigned(0x12345678)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '020412345678'
+  )
+  let input = new Parser(builder.bytes())
+  let out = {}
+  t.ok(input.readASN1IntBytes(out))
+  t.deepEqual(out.out, [0x12, 0x34, 0x56, 0x78])
+
+  // test 0
+  builder = new Builder()
+  builder.addASN1Unsigned(0)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '020100'
+  )
+  out = {}
+  input = new Parser(builder.bytes())
+  t.ok(input.readASN1IntBytes(out))
+  t.deepEqual(out.out, [0])
+
+  // test prefix with 0
+  builder = new Builder()
+  builder.addASN1Unsigned(0xabcdef)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '020400abcdef'
+  )
+  out = {}
+  input = new Parser(builder.bytes())
+  t.ok(input.readASN1IntBytes(out))
+  t.deepEqual(out.out, [0, 0xab, 0xcd, 0xef])
+
+  // test negative integer
+  builder = new Builder()
+  t.throws(() => {
+    builder.addASN1Unsigned(-1)
+  }, /requires an unsigned integer/)
+  t.end()
+})
+
+test('addASN1Signed test', function (t) {
+  let builder = new Builder()
+  builder.addASN1Signed(0x12345678)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '020412345678'
+  )
+  let input = new Parser(builder.bytes())
+  let out = {}
+  t.ok(input.readASN1IntBytes(out))
+  t.deepEqual(out.out, [0x12, 0x34, 0x56, 0x78])
+
+  // test 0
+  builder = new Builder()
+  builder.addASN1Signed(0)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '020100'
+  )
+  out = {}
+  input = new Parser(builder.bytes())
+  t.ok(input.readASN1Signed(out))
+  t.equal(out.out, 0)
+
+  // test prefix with 0
+  builder = new Builder()
+  builder.addASN1Signed(0xabcdef)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '020400abcdef'
+  )
+  out = {}
+  input = new Parser(builder.bytes())
+  t.ok(input.readASN1Signed(out))
+  t.equal(out.out, 0xabcdef)
+
+  // test negative integer
+  builder = new Builder()
+  builder.addASN1Signed(-1)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '0201ff'
+  )
+  out = {}
+  input = new Parser(builder.bytes())
+  t.ok(input.readASN1Signed(out))
+  t.equal(out.out, -1)
+
+  // -129
+  builder = new Builder()
+  builder.addASN1Signed(-129)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '0202ff7f'
+  )
+  out = {}
+  input = new Parser(builder.bytes())
+  t.ok(input.readASN1Signed(out))
+  t.equal(out.out, -129)
+
+  // -256
+  builder = new Builder()
+  builder.addASN1Signed(-256)
+  t.equal(
+    sjcl.bytescodec.hex.fromBytes(builder.bytes()),
+    '0202ff00'
+  )
+  out = {}
+  input = new Parser(builder.bytes())
+  t.ok(input.readASN1Signed(out))
+  t.equal(out.out, -256)
+
+  t.end()
+})

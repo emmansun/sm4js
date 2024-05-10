@@ -40,8 +40,8 @@ class Builder {
   }
 
   /**
-   *
-   * @param {boolean} v
+   * addASN1Boolean appends a DER-encoded ASN.1 boolean value
+   * @param {boolean} v true or false
    */
   addASN1Boolean (v) {
     if (typeof v !== 'boolean') {
@@ -68,6 +68,10 @@ class Builder {
     })
   }
 
+  /**
+   * addASN1OctetString appends a DER-encoded ASN.1 OCTET STRING.
+   * @param {Array} bytes the byte array
+   */
   addASN1OctetString (bytes) {
     this.addASN1(DEROCTETSTRING, (builder) => {
       builder.addBytes(bytes)
@@ -77,7 +81,7 @@ class Builder {
   /**
    * addASN1BitString appends a DER-encoded ASN.1 BIT STRING. This does not
    * support BIT STRINGs that are not a whole number of bytes.
-   * @param {Array} bytes
+   * @param {Array} bytes the byte array
    */
   addASN1BitString (bytes) {
     this.addASN1(DERBITSTRING, (builder) => {
@@ -129,7 +133,7 @@ class Builder {
   /**
    * addASN1IntBytes encodes in ASN.1 a positive integer represented as
    * a big-endian byte slice with zero or more leading zeroes.
-   * @param {Array} bytes the byte array of integer
+   * @param {Array} bytes the byte array of positive integer
    */
   addASN1IntBytes (bytes) {
     for (; bytes.length > 0 && bytes[0] === 0;) {
@@ -144,6 +148,53 @@ class Builder {
       }
       builder.addBytes(bytes)
     })
+  }
+
+  /**
+   * addASN1Unsigned appends a DER-encoded ASN.1 UNSIGNED INTEGER.
+   * @param {number} v the positive integer value
+   */
+  addASN1Unsigned (v) {
+    if (v < 0) {
+      throw new Error('requires an unsigned integer')
+    }
+    this.addASN1(DERINTEGER, (builder) => {
+      builder._addUnsigned(v)
+    })
+  }
+
+  /**
+   * addASN1Signed appends a DER-encoded ASN.1 INTEGER.
+   * @param {number} v the valid integer value, include 0, positive integer and negative integer
+   */
+  addASN1Signed (v) {
+    this.addASN1(DERINTEGER, (builder) => {
+      if (Math.sign(v) === -1) {
+        const vMunus1 = -v - 1
+        let len = 1
+        for (let i = vMunus1; i >= 0x80; i >>= 8) {
+          len++
+        }
+
+        for (; len > 0; len--) {
+          const i = vMunus1 >> ((len - 1) * 8)
+          builder.addByte(i ^ 0xff)
+        }
+      } else {
+        builder._addUnsigned(v)
+      }
+    })
+  }
+
+  _addUnsigned (v) {
+    let len = 1
+    for (let i = v; i >= 0x80; i >>= 8) {
+      len++
+    }
+    for (; len > 0; len--) {
+      const i = v >> ((len - 1) * 8)
+      this.addByte(i)
+    }
   }
 
   _add (bytes) {
@@ -291,10 +342,85 @@ class Parser {
     return this.readASN1(output, DERSequence)
   }
 
+  /**
+   * readASN1IntBytes reads a DER-encoded ASN.1 UNSIGNED INTEGER value into byte array.
+   * @param {Object} output output.out is the unsigned integer value's byte array (big-endian)
+   * @returns {boolean} reports whether the read was successful.
+   */
   readASN1IntBytes (output) {
-    return this.readASN1Bytes(output, DERINTEGER)
+    const ret = {}
+    if (this.readASN1Bytes(ret, DERINTEGER) && this._checkASN1Integer(ret.out) && ((ret.out[0] & 0x80) === 0)) {
+      output.out = ret.out
+      return true
+    }
+    return false
   }
 
+  /**
+   * readASN1Unsigned reads a DER-encoded ASN.1 UNSIGNED INTEGER value
+   * @param {Object} output output.out is the unsigned integer value
+   * @returns {boolean} reports whether the read was successful.
+   */
+  readASN1Unsigned (output) {
+    const ret = {}
+    if (this.readASN1Bytes(ret, DERINTEGER) && this._checkASN1Integer(ret.out) && ((ret.out[0] & 0x80) === 0)) {
+      output.out = 0
+      const length = ret.out.length
+      for (let i = 0; i < length; i++) {
+        output.out = (output.out << 8) | ret.out[i]
+      }
+      return true
+    }
+    return false
+  }
+
+  /**
+   * readASN1Signed reads a DER-encoded ASN.1 INTEGER value
+   * @param {Object} output output.out is the integer value
+   * @returns {boolean} reports whether the read was successful.
+   */
+  readASN1Signed (output) {
+    const ret = {}
+    if (this.readASN1Bytes(ret, DERINTEGER) && this._checkASN1Integer(ret.out)) {
+      output.out = 0
+      if ((ret.out[0] & 0x80) === 0x80) {
+        // negative value
+        const length = ret.out.length
+        for (let i = 0; i < length; i++) {
+          output.out = (output.out << 8) | (ret.out[i] ^ 0xff)
+        }
+        output.out = -(output.out + 1)
+      } else {
+        const length = ret.out.length
+        for (let i = 0; i < length; i++) {
+          output.out = (output.out << 8) | ret.out[i]
+        }
+      }
+      return true
+    }
+    return false
+  }
+
+  _checkASN1Integer (bytes) {
+    if (bytes.length === 0) {
+      // An INTEGER is encoded with at least one octet
+      return false
+    }
+    if (bytes.length === 1) {
+      return true
+    }
+    if ((bytes[0] === 0 && (bytes[1] & 0x80) === 0) || (bytes[0] === 0xff && (bytes[1] & 0x80) === 0x80)) {
+      // Value is not minimally encoded.
+      return false
+    }
+    return true
+  }
+
+  /**
+   * readASN1OctetString reads a DER-encoded ASN.1 OCTET String
+   * @param {Object} output output.out is the byte array
+   * @returns {boolean} reports whether the read was successful.
+   */
   readASN1OctetString (output) {
     return this.readASN1Bytes(output, DEROCTETSTRING)
   }
@@ -357,6 +483,11 @@ class Parser {
     return true
   }
 
+  /**
+   * readASN1BitString reads a DER-encoded ASN.1 BIT String
+   * @param {Object} output output.out.bytes is the byte array, output.out.length is the bit length.
+   * @returns {boolean} reports whether the read was successful.
+   */
   readASN1BitString (output) {
     if (
       !this.readASN1(output, DERBITSTRING) ||
@@ -412,9 +543,9 @@ class Parser {
    * readOptionalASN1ObjectIdentifier attempts to read an optional OBJECT IDENTIFIER
    * explicitly tagged with tag into out and advances. If no element with a matching
    * tag is present, it sets ouput.present to false.
-   * @param {Object} output
-   * @param {Number} tag
-   * @returns {Boolean} It reports whether the read was successful.
+   * @param {Object} output output.out contains the OID string
+   * @param {number} tag tag number, for example: 0, 1, ...
+   * @returns {boolean} It reports whether the read was successful.
    */
   readOptionalASN1ObjectIdentifier (output, tag) {
     const child = {}
@@ -436,9 +567,9 @@ class Parser {
    * readOptionalASN1OctetString attempts to read an optional ASN.1 OCTET STRING
    * explicitly tagged with tag into out and advances. If no element with a matching
    * tag is present, it sets ouput.present to false.
-   * @param {Object} output
-   * @param {Number} tag
-   * @returns {Boolean} It reports whether the read was successful.
+   * @param {Object} output output.out contains the OCTET string byte array
+   * @param {number} tag tag number, for example: 0, 1, ...
+   * @returns {boolean} It reports whether the read was successful.
    */
   readOptionalASN1OctetString (output, tag) {
     const child = {}
@@ -460,9 +591,9 @@ class Parser {
    * readOptionalASN1BitString attempts to read an optional ASN.1 BIT STRING
    * explicitly tagged with tag into out and advances. If no element with a matching
    * tag is present, it sets ouput.present to false.
-   * @param {Object} output
-   * @param {Number} tag
-   * @returns {Boolean} It reports whether the read was successful.
+   * @param {Object} output output.out contains the BIT string object
+   * @param {number} tag tag number, for example: 0, 1, ...
+   * @returns {boolean} It reports whether the read was successful.
    */
   readOptionalASN1BitString (output, tag) {
     const child = {}
@@ -581,41 +712,6 @@ class Parser {
     output.tag = tag
     output.out = out
     return true
-  }
-
-  readUint8 () {
-    const v = this._read(1)
-    if (v === undefined) {
-      return { success: false }
-    }
-    return { success: true, value: v[0] & 0xff }
-  }
-
-  readUint6 () {
-    const v = this._read(2)
-    if (v === undefined) {
-      return { success: false }
-    }
-    return { success: true, value: ((v[0] << 8) | v[1]) >>> 0 }
-  }
-
-  readUint24 () {
-    const v = this._read(3)
-    if (v === undefined) {
-      return { success: false }
-    }
-    return { success: true, value: ((v[0] << 16) | (v[1] << 8) | v[2]) >>> 0 }
-  }
-
-  readUint32 () {
-    const v = this._read(4)
-    if (v === undefined) {
-      return { success: false }
-    }
-    return {
-      success: true,
-      value: ((v[0] << 24) | (v[1] << 16) | (v[2] << 8) | v[3]) >>> 0
-    }
   }
 
   _readUnsigned (length) {

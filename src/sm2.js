@@ -133,7 +133,7 @@ function bindSM2 (sjcl) {
     /**
      * Generate SM2 key pair
      * @param {bitArray|bn} sec
-     * @param {int} paranoia Paranoia for generation (default 6)
+     * @param {number} paranoia Paranoia for generation (default 6)
      * @param {boolean} checkOrderMinus1 make sure the generated private key is in (0, n-1) or not (default true)
      * @returns
      */
@@ -160,7 +160,7 @@ function bindSM2 (sjcl) {
   sjcl.ecc.sm2.secretKey.prototype = {
     /** SM2 sign hash function
      * @param {bitArray} hash hash to sign.
-     * @param {int} paranoia paranoia for random number generation
+     * @param {number} paranoia paranoia for random number generation
      * @param {string} mode signature mode, default asn1, also can use rs which means r||s
      * @return {string} hex signature string
      */
@@ -279,7 +279,7 @@ function bindSM2 (sjcl) {
      * SM2 Key Exchange, return the implicit signature
      * @param {sjcl.ecc.sm2.secretKey} ephemeralPrivateKey Generated ephemeral private key
      * @param {sjcl.ecc.sm2.publicKey} ephemeralPubKey Generated ephemeral public key
-     * @returns {sjcl.bn}
+     * @returns {bn} the big number of implicit signature
      */
     implicitSig: function (ephemeralPrivateKey, ephemeralPubKey) {
       const R = this._curve.r
@@ -294,7 +294,7 @@ function bindSM2 (sjcl) {
   sjcl.ecc.sm2.publicKey.prototype = {
     /**
      * ZA = H256(ENTLA || IDA || a || b || xG || yG || xA || yA)
-     * @param {String|bitArray} uid The uid used for ZA
+     * @param {string|bitArray} uid The uid used for ZA
      * @return {bitArray} ZA.
      */
     za: function (uid = defaultUID) {
@@ -322,7 +322,7 @@ function bindSM2 (sjcl) {
 
     /**
      * SM2 Key Exchange, generate shared key material from shared secret key
-     * @param {Number} keyLen The required key length in bits
+     * @param {number} keyLen The required key length in bits
      * @param {bitArray} za1 For initiator, this is own ZA; otherwise, it's peer's ZA
      * @param {bitArray} za2 For initiator, this is peer's ZA; otherwise, it's own ZA
      * @returns {bitArray} returns the agreed key material
@@ -335,7 +335,7 @@ function bindSM2 (sjcl) {
     /**
      * SM2 Key Exchange, calculate the shared secret key
      * @param {sjcl.ecc.sm2.publicKey} ephemeralPub The peer's ephemeral public key
-     * @param {sjcl.bn} t The implicitSig result
+     * @param {bn} t The implicitSig result
      * @returns {sjcl.ecc.sm2.publicKey} returns the shared secret key
      */
     sharedSecretKey: function (ephemeralPub, t) {
@@ -350,8 +350,8 @@ function bindSM2 (sjcl) {
     /**
      * Calculate hash value of the data and uid.
      *
-     * @param {String|bitArray} data The data used for hash
-     * @param {String|bitArray} uid The uid used for ZA
+     * @param {string|bitArray} data The data used for hash
+     * @param {string|bitArray} uid The uid used for ZA
      * @returns {bitArray} hash value.
      */
     hash: function (data, uid = defaultUID) {
@@ -367,11 +367,11 @@ function bindSM2 (sjcl) {
     },
 
     /** SM2 verify function
-     * @param {String|bitArray} data The data used for hash
+     * @param {string|bitArray} data The data used for hash
      * @param {string} signature the hex signature string
      * @param {string} mode the signature mode, default asn1, also can use rs which means r||s.
-     * @param {String|bitArray} uid The uid used for ZA
-     * @returns {Boolean} verify result
+     * @param {string|bitArray} uid The uid used for ZA
+     * @returns {boolean} verify result
      */
     verify: function (msg, signature, mode = 'asn1', uid) {
       return this.verifyHash(this.hash(msg, uid), signature, mode)
@@ -382,7 +382,7 @@ function bindSM2 (sjcl) {
      * @param {bitArray} hashValue The hash value.
      * @param {string} signature the hex signature string
      * @param {string} mode the signature mode, default asn1, also can use rs which means r||s.
-     * @returns {Boolean} verify result
+     * @returns {boolean} verify result
      */
     verifyHash: function (hashValue, signature, mode = 'asn1') {
       if (typeof signature !== 'string') {
@@ -428,8 +428,8 @@ function bindSM2 (sjcl) {
 
     /**
      * Encrypt message
-     * @param {String|bitArray} msg The data used for encryption
-     * @param {int} paranoia paranoia for random number generation
+     * @param {string|bitArray} msg The data used for encryption
+     * @param {number} paranoia paranoia for random number generation
      * @param {string} outputMode the ciphertext mode, default is asn1, also support c1c3c2
      * @returns {string} hex string of ciphertext
      */

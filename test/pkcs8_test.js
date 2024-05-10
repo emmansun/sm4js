@@ -69,3 +69,101 @@ test('pkcs8: marshal SM2 private key', function (t) {
 
   t.end()
 })
+
+const encryptedEC256aes128sha1 = '3081de304906092a864886f70d01050d303c301b06092a864886f70d01050c300e040804a051b7c74ec36d02020800301d060960864801650304010204109137d3cd5fdac1a9785a1cb50eb2fed804819015f5c03cf57e08e5800497526aba207941c535a43e47ac79e53cff9aab8d23088eacff4336811dd4f1ad29a1da3be00248443031fac67a1f01b8d57af44c0f6e1b286ff31979ec516eb2ded9837b63bfd8d30a6e8da94696588cbecdf97f57e9abff517d553ea91a45103da54f8766cceba1302f4ea37a0c6256c45c04fd9aadf732418a314b61d9e93f6d022f9c21c6'
+const encryptedEC256aes = '3081ec305706092a864886f70d01050d304a302906092a864886f70d01050c301c0408d5bca66d1e59886c02020800300c06082a864886f70d02090500301d060960864801650304012a0410bde376406f39b9fe4042e0295136727304819025c20a37023b577af25a1a07a9e46b16da4af0f52edd0bbc46f5d477dd9fdaf670673b5aca9bb1ed7f4fbdf3ac3fd6f9a3e24dccd90888fd563eb670c513ee3a0cb2ca62d246453d5aa001fe9b08736901b0cc99ca85b780db7684d1feca58200af9ff7df7e49e1d6ae8ec58916631c461554b190aff23b2b95b2876e188cdda7478094e17f86414db9332fe98124688'
+const pkcs8SM2P256PrivateKeyHex = '3081f6306106092a864886f70d01050d3054303406092a864886f70d01050c30270410dae9c91624d3f74010fb30817ce2756a020110020110300d06092a811ccf55018311020500301c06082a811ccf550168020410cc520afee58fd737683d98f1a2212cc6048190cadc0af7cfc44f85ab4b41fb02c52b8ba153ab3b6bcc0be0cc5977facf40b1a62d525cc4dc4cc4c7a456c68f24a4a3b6ca3d1afc987d599083e1701ca19f5a328a625a539da5726bfe2425306762ac2608a05dfb94731c8d91cd7df9a4e228bb37109f8ebce9885ab872562c34c5de4849ead6db8e12eaf89187231d848815cf5b3c6eb9e9aeb4f92209b09b8f162d1f'
+
+test('pkcs8: parse encrypted key material', function (t) {
+  // sha1 + aes128-CBC
+  let prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(sjcl.bytescodec.hex.toBytes(encryptedEC256aes128sha1), 'password')
+  let serializedPrv = prv.serialize()
+  t.equals(
+    serializedPrv.exponent,
+    '8cb17329bffc86c75298f7edb3df1167b016cd09cb0ec321cbabfeff7059959e'
+  )
+  t.equals(serializedPrv.curve, 'c256')
+
+  // wrong password
+  t.throws(() => {
+    sjcl.pkcs8.parsePKCS8ECPrivateKey(sjcl.bytescodec.hex.toBytes(encryptedEC256aes128sha1), 'wrongpwd')
+  }, /pkcs#5 padding corrupt/)
+
+  // sha256 + aes256-CBC
+  prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(sjcl.bytescodec.hex.toBytes(encryptedEC256aes), 'password')
+  serializedPrv = prv.serialize()
+  t.equals(
+    serializedPrv.exponent,
+    '8cb17329bffc86c75298f7edb3df1167b016cd09cb0ec321cbabfeff7059959e'
+  )
+  t.equals(serializedPrv.curve, 'c256')
+
+  // sm3 + sm4-CBC
+  prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(sjcl.bytescodec.hex.toBytes(pkcs8SM2P256PrivateKeyHex), 'Password1')
+  serializedPrv = prv.serialize()
+  t.equals(
+    serializedPrv.exponent,
+    '6c5a0a0b2eed3cbec3e4f1252bfe0e28c504a1c6bf1999eebb0af9ef0f8e6c85'
+  )
+  t.equals(serializedPrv.curve, 'sm2p256v1')
+  t.end()
+})
+
+test('pkcs8: marshal encrypted key material', function (t) {
+  const keys = sjcl.ecc.sm2.generateKeys(
+    new BigInt('0x8604263B78B289BDD6B927D543B36088479688E7171099AD36328829C3CDE2A5')
+  )
+
+  // sm3+sm4-CBC
+  let bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sm3' }, cipherOpts: { cipher: 'sm4' } })
+  let prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
+  let serializedPrv = prv.serialize()
+  t.equals(serializedPrv.exponent, '8604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5')
+
+  // all default: aes-128-cbc, sha1
+  bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1')
+  prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
+  serializedPrv = prv.serialize()
+  t.equals(serializedPrv.exponent, '8604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5')
+
+  // sha256+aes256-CBC
+  bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sha256', iter: 2048, saltLen: 128 }, cipherOpts: { cipher: 'aes', keyLen: 32 } })
+  prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
+  serializedPrv = prv.serialize()
+  t.equals(serializedPrv.exponent, '8604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5')
+
+  // sha256+aes256-GCM
+  bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sha256', iter: 2048, saltLen: 128 }, cipherOpts: { cipher: 'aes', mode: 'gcm', keyLen: 32 } })
+  prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
+  serializedPrv = prv.serialize()
+  t.equals(serializedPrv.exponent, '8604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5')
+
+  // sm3 + sm4-GCM
+  bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sm3', iter: 2048 }, cipherOpts: { cipher: 'sm4', mode: 'gcm' } })
+  prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
+  serializedPrv = prv.serialize()
+  t.equals(serializedPrv.exponent, '8604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5')
+
+  // unsupported hash
+  t.throws(() => {
+    sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sha3' }, cipherOpts: { cipher: 'sm4' } })
+  }, /pkcs8: unsupported hash algorithm sha3/)
+
+  // unsupported cipher
+  t.throws(() => {
+    sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sm3' }, cipherOpts: { cipher: 'des' } })
+  }, /pkcs8: unsupported cipher des-128-cbc/)
+  t.throws(() => {
+    sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sm3' }, cipherOpts: { cipher: 'aes', keyLen: 25 } })
+  }, /pkcs8: unsupported cipher aes-200-cbc/)
+  t.throws(() => {
+    sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', { kdfOpts: { hash: 'sm3' }, cipherOpts: { cipher: 'aes', mode: 'ctr', keyLen: 32 } })
+  }, /pkcs8: unsupported cipher aes-256-ctr/)
+
+  // invalid opts type
+  t.throws(() => {
+    sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', [])
+  }, /opts must be an object/)
+
+  t.end()
+})

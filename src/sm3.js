@@ -24,7 +24,7 @@ function bindSM3 (sjcl) {
   /**
    * Hash a string or an array of words.
    * @static
-   * @param {bitArray|String} data the data to hash.
+   * @param {bitArray|string} data the data to hash.
    * @return {bitArray} The hash value, an array of 16 big-endian words.
    */
   SM3.hash = function (data) {
@@ -51,7 +51,7 @@ function bindSM3 (sjcl) {
 
     /**
      * Input several words to the hash.
-     * @param {bitArray|String} data the data to hash.
+     * @param {bitArray|string} data the data to hash.
      * @return this
      */
     update: function (data) {
