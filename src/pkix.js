@@ -14,6 +14,13 @@ function bindPKIX (sjcl) {
     sjcl.ecc.curves.c521.oid = '1.3.132.0.35'
     sjcl.ecc.curves.k256.oid = '1.3.132.0.10'
   }
+  /**
+   * @namespace
+   * @description
+   * <p>
+   * PKIX EC public key handling & RFC 5915/SEC1 EC private key handling functions.
+   * </p>
+   */
   sjcl.pkix = {
   /**
    * parsePKIXPublicKey parses an EC public key from DER-encoded byte array

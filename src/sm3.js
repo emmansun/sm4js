@@ -3,11 +3,12 @@
  */
 
 function bindSM3 (sjcl) {
+  if (sjcl.hash.sm3) return
   /**
    * Context for a SM3 operation in progress.
    * @constructor
    */
-  sjcl.hash.sm3 = sjcl.hash.sm3 || function (hash) {
+  sjcl.hash.sm3 = function (hash) {
     if (!this._t[0]) {
       this._precompute()
     }
@@ -20,18 +21,18 @@ function bindSM3 (sjcl) {
     }
   }
 
-  const SM3 = sjcl.hash.sm3
   /**
    * Hash a string or an array of words.
    * @static
    * @param {bitArray|string} data the data to hash.
    * @return {bitArray} The hash value, an array of 16 big-endian words.
    */
-  SM3.hash = function (data) {
+  sjcl.hash.sm3.hash = function (data) {
+    const SM3 = sjcl.hash.sm3
     return new SM3().update(data).finalize()
   }
 
-  SM3.prototype = {
+  sjcl.hash.sm3.prototype = {
     /**
      * The hash's block size, in bits.
      * @constant

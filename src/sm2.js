@@ -63,7 +63,9 @@ function bindSM2 (sjcl) {
     }
   }
 
-  /** sm2 keys */
+  /** sm2 keys
+   * @namespace
+   */
   sjcl.ecc.sm2 = {
     /** sm2 publicKey.
      * @constructor
@@ -135,7 +137,7 @@ function bindSM2 (sjcl) {
      * @param {bitArray|bn} sec
      * @param {number} paranoia Paranoia for generation (default 6)
      * @param {boolean} checkOrderMinus1 make sure the generated private key is in (0, n-1) or not (default true)
-     * @returns
+     * @returns {Object} the key pair
      */
     generateKeys: function (sec, paranoia = 6, checkOrderMinus1 = true) {
       if (sec instanceof Array) {

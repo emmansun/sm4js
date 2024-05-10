@@ -2,7 +2,9 @@
  * Port from golang golang.org/x/crypto/cryptobyte.
  *  @author Emman Sun
  */
-
+/**
+ * @namespace asn1
+ */
 const classConstructed = 0x20
 const classContextSpecific = 0x80
 const DERBOOLEAN = 0x01
@@ -21,22 +23,18 @@ function contextSpecificTag (tag) {
   return tag | classContextSpecific
 }
 
+/**
+ * Class representing a ASN.1 DER encoder.
+ * @memberof asn1
+ */
 class Builder {
-  constructor (buffer) {
-    this.result = buffer || []
+  /**
+   * Create one ASN.1 DER encoder.
+   * @constructor
+   */
+  constructor () {
+    this.result = []
     this.offset = 0
-  }
-
-  bytes () {
-    return this.result.slice(this.offset)
-  }
-
-  addByte (byte) {
-    this._add([byte & 0xff])
-  }
-
-  addBytes (bytes) {
-    this._add(bytes)
   }
 
   /**
@@ -52,19 +50,29 @@ class Builder {
     })
   }
 
+  /** addASN1NULL appends a DER-encoded NULL value to the bytes  */
   addASN1NULL () {
     this.addBytes([DERNULL, 0])
   }
 
+  /**
+   * addASN1Sequence appends a DER-encoded Sequence to the bytes
+   * @param {Function} builderContinuation a function to continue build the inner DER
+   */
   addASN1Sequence (builderContinuation) {
     this.addASN1(DERSequence, (builder) => {
-      this.callContinuation(builderContinuation, builder)
+      this._callContinuation(builderContinuation, builder)
     })
   }
 
+  /**
+   * addASN1ExplicitTag appends an explicit tag to the bytes.
+   * @param {number} tag tag number, for example: 0, 1, ...
+   * @param {Function} builderContinuation a function to continue build the inner DER
+   */
   addASN1ExplicitTag (tag, builderContinuation) {
     this.addASN1(contextSpecificTag(constructedTag(tag)), (builder) => {
-      this.callContinuation(builderContinuation, builder)
+      this._callContinuation(builderContinuation, builder)
     })
   }
 
@@ -109,6 +117,10 @@ class Builder {
     }
   }
 
+  /**
+   * addASN1ObjectIdentifier appends a DER-encoded ASN.1 OID to the bytes
+   * @param {string} oidString OID string value
+   */
   addASN1ObjectIdentifier (oidString) {
     if (typeof oidString !== 'string' || !/^[0-9.]+$/.test(oidString)) {
       throw new Error(`invalid OID: ${oidString}`)
@@ -186,6 +198,48 @@ class Builder {
     })
   }
 
+  /**
+   * addASN1 appends an ASN.1 object. The object is prefixed with the given tag.
+   * Tags greater than 30 are not supported and result in an error (i.e. low-tag-number form only).
+   * The child builder passed to the builderContinuation can be used to build the content of the ASN.1 object.
+   * @param {number} tag the tag value
+   * @param {Function} builderContinuation a function to continue build the inner DER
+   */
+  addASN1 (tag, builderContinuation) {
+    if ((tag & 0x1f) === 0x1f) {
+      throw new Error(
+        'high-tag number identifier octects not supported: 0x' +
+          tag.toString(16)
+      )
+    }
+    this.addByte(tag)
+    this._addLengthPrefixed(1, true, builderContinuation)
+  }
+
+  /**
+   * bytes returns the ASN.1 DER-encoded byte array.
+   * @returns the ASN.1 DER-encoded byte array
+   */
+  bytes () {
+    return this.result.slice(this.offset)
+  }
+
+  /**
+   * addByte appends a byte.
+   * @param {number} byte the byte value
+   */
+  addByte (byte) {
+    this._add([byte & 0xff])
+  }
+
+  /**
+   * addBytes appends a byte array.
+   * @param {Array} bytes byte array
+   */
+  addBytes (bytes) {
+    this._add(bytes)
+  }
+
   _addUnsigned (v) {
     let len = 1
     for (let i = v; i >= 0x80; i >>= 8) {
@@ -207,7 +261,7 @@ class Builder {
     this.result.push(...bytes)
   }
 
-  callContinuation (builderContinuation, builder) {
+  _callContinuation (builderContinuation, builder) {
     const targetRoot = this._getRoot()
     if (!targetRoot.inContinuation) {
       targetRoot.inContinuation = true
@@ -219,11 +273,11 @@ class Builder {
     }
   }
 
-  flushChild () {
+  _flushChild () {
     if (!this.child) {
       return
     }
-    this.child.flushChild()
+    this.child._flushChild()
     const child = this.child
     this.child = null
 
@@ -278,7 +332,7 @@ class Builder {
     return this.root || this
   }
 
-  addLengthPrefixed (lenLen, isASN1, builderContinuation) {
+  _addLengthPrefixed (lenLen, isASN1, builderContinuation) {
     const offset = this.result.length
 
     for (let i = 0; i < lenLen; i++) {
@@ -295,34 +349,41 @@ class Builder {
     this.child.pendingLenLen = lenLen
     this.child.pendingIsASN1 = isASN1
 
-    this.callContinuation(builderContinuation, this.child)
-    this.flushChild()
+    this._callContinuation(builderContinuation, this.child)
+    this._flushChild()
     if (this.child) {
       throw new Error('internal error')
     }
   }
-
-  addASN1 (tag, builderContinuation) {
-    if ((tag & 0x1f) === 0x1f) {
-      throw new Error(
-        'high-tag number identifier octects not supported: 0x' +
-          tag.toString(16)
-      )
-    }
-    this.addByte(tag)
-    this.addLengthPrefixed(1, true, builderContinuation)
-  }
 }
 
+/**
+ * Class representing a ASN.1 DER decoder.
+ * @memberof asn1
+ */
 class Parser {
+  /**
+   * Create one ASN.1 DER decoder with the given DER-encoded byte array.
+   * @constructor
+   * @param {Array} bytes the given DER-encoded byte array
+   */
   constructor (bytes) {
     this.bytes = bytes
   }
 
+  /**
+   * length returns the length of the current DER-encoded byte array.
+   * @returns the length of current byte array
+   */
   length () {
     return this.bytes ? this.bytes.length : 0
   }
 
+  /**
+   * peekASN1Tag reports whether the next ASN.1 value on the bytes starts with the given tag.
+   * @param {number} tag the given tag value
+   * @returns {boolean} true or false
+   */
   peekASN1Tag (tag) {
     if (this.isEmpty()) {
       return false
@@ -330,14 +391,31 @@ class Parser {
     return this.bytes[0] === tag
   }
 
+  /**
+   * skipASN1NULL reads and discards an ASN.1 NULL. It
+   * reports whether the operation was successful.
+   * @returns {boolean} true or false
+   */
   skipASN1NULL () {
     return this.skipASN1(DERNULL)
   }
 
+  /**
+   * skipASN1 reads and discards an ASN.1 element with the given tag. It
+   * reports whether the operation was successful.
+   * @param {number} tag the given tag value
+   * @returns {boolean} ture or false
+   */
   skipASN1 (tag) {
     return this.readASN1({}, tag)
   }
 
+  /**
+   * readASN1Sequence decodes an ASN.1 SEQUENCE into ouput.out and advances.
+   * It reports whether the read was successful.
+   * @param {Object} output output.out is the inner Parser
+   * @returns {boolean} reports whether the read was successful
+   */
   readASN1Sequence (output) {
     return this.readASN1(output, DERSequence)
   }
@@ -349,7 +427,11 @@ class Parser {
    */
   readASN1IntBytes (output) {
     const ret = {}
-    if (this.readASN1Bytes(ret, DERINTEGER) && this._checkASN1Integer(ret.out) && ((ret.out[0] & 0x80) === 0)) {
+    if (
+      this.readASN1Bytes(ret, DERINTEGER) &&
+      this._checkASN1Integer(ret.out) &&
+      (ret.out[0] & 0x80) === 0
+    ) {
       output.out = ret.out
       return true
     }
@@ -363,7 +445,11 @@ class Parser {
    */
   readASN1Unsigned (output) {
     const ret = {}
-    if (this.readASN1Bytes(ret, DERINTEGER) && this._checkASN1Integer(ret.out) && ((ret.out[0] & 0x80) === 0)) {
+    if (
+      this.readASN1Bytes(ret, DERINTEGER) &&
+      this._checkASN1Integer(ret.out) &&
+      (ret.out[0] & 0x80) === 0
+    ) {
       output.out = 0
       const length = ret.out.length
       for (let i = 0; i < length; i++) {
@@ -381,7 +467,10 @@ class Parser {
    */
   readASN1Signed (output) {
     const ret = {}
-    if (this.readASN1Bytes(ret, DERINTEGER) && this._checkASN1Integer(ret.out)) {
+    if (
+      this.readASN1Bytes(ret, DERINTEGER) &&
+      this._checkASN1Integer(ret.out)
+    ) {
       output.out = 0
       if ((ret.out[0] & 0x80) === 0x80) {
         // negative value
@@ -409,7 +498,10 @@ class Parser {
     if (bytes.length === 1) {
       return true
     }
-    if ((bytes[0] === 0 && (bytes[1] & 0x80) === 0) || (bytes[0] === 0xff && (bytes[1] & 0x80) === 0x80)) {
+    if (
+      (bytes[0] === 0 && (bytes[1] & 0x80) === 0) ||
+      (bytes[0] === 0xff && (bytes[1] & 0x80) === 0x80)
+    ) {
       // Value is not minimally encoded.
       return false
     }
@@ -438,7 +530,7 @@ class Parser {
         return false
       }
       ret <<= 7
-      const b = (this._read(1))[0]
+      const b = this._read(1)[0]
       // ITU-T X.690, section 8.19.2:
       // The subidentifier shall be encoded in the fewest possible octets,
       // that is, the leading octet of the subidentifier shall not have the value 0x80.
@@ -454,6 +546,12 @@ class Parser {
     return false
   }
 
+  /**
+   * readASN1ObjectIdentifier decodes an ASN.1 OID into output and advances.
+   * It reports whether the read was successful.
+   * @param {Object} output output.out is the OID string value
+   * @returns reports whether the read was successful
+   */
   readASN1ObjectIdentifier (output) {
     const ois = {}
     if (!this.readASN1(ois, DEROBJECTIDENTIFIER) || ois.out.length() === 0) {
@@ -513,6 +611,12 @@ class Parser {
     return true
   }
 
+  /**
+   * readASN1Boolean decodes an ASN.1 BOOLEAN and converts it to a boolean
+   * representation into input.out and advances.
+   * @param {Object} output output.out is the result boolean value
+   * @returns {boolean} reports whether the read was successful.
+   */
   readASN1Boolean (output) {
     if (!this.readASN1(output, DERBOOLEAN) || output.out.length() !== 1) {
       return false
@@ -522,6 +626,14 @@ class Parser {
     return true
   }
 
+  /**
+   * readASN1Bytes reads the contents of a DER-encoded ASN.1 element (not including
+   * tag and length bytes) into output.out as a byte array, and advances. The element must match the
+   * given tag.
+   * @param {Object} output output.out is the result byte array.
+   * @param {number} tag the given tag value.
+   * @returns {boolean} reports whether the read was successful.
+   */
   readASN1Bytes (output, tag) {
     const result = this.readASN1(output, tag)
     if (!result) {
@@ -531,6 +643,14 @@ class Parser {
     return true
   }
 
+  /**
+   * readASN1 reads the contents of a DER-encoded ASN.1 element (not including
+   * tag and length bytes) into output.out as a new Parser instance, and advances. The element must match the
+   * given tag.
+   * @param {Object} output output.out is the result Parser intance.
+   * @param {number} tag the given tag value.
+   * @returns {boolean} reports whether the read was successful.
+   */
   readASN1 (output, tag) {
     const result = this.readAnyASN1(output)
     if (!result || tag !== output.tag) {
@@ -541,7 +661,7 @@ class Parser {
 
   /**
    * readOptionalASN1ObjectIdentifier attempts to read an optional OBJECT IDENTIFIER
-   * explicitly tagged with tag into out and advances. If no element with a matching
+   * explicitly tagged with tag into output.out and advances. If no element with a matching
    * tag is present, it sets ouput.present to false.
    * @param {Object} output output.out contains the OID string
    * @param {number} tag tag number, for example: 0, 1, ...
@@ -549,7 +669,9 @@ class Parser {
    */
   readOptionalASN1ObjectIdentifier (output, tag) {
     const child = {}
-    if (!this.readOptionalASN1(child, contextSpecificTag(constructedTag(tag)))) {
+    if (
+      !this.readOptionalASN1(child, contextSpecificTag(constructedTag(tag)))
+    ) {
       return false
     }
     output.present = child.present
@@ -565,7 +687,7 @@ class Parser {
 
   /**
    * readOptionalASN1OctetString attempts to read an optional ASN.1 OCTET STRING
-   * explicitly tagged with tag into out and advances. If no element with a matching
+   * explicitly tagged with tag into output.out and advances. If no element with a matching
    * tag is present, it sets ouput.present to false.
    * @param {Object} output output.out contains the OCTET string byte array
    * @param {number} tag tag number, for example: 0, 1, ...
@@ -573,7 +695,9 @@ class Parser {
    */
   readOptionalASN1OctetString (output, tag) {
     const child = {}
-    if (!this.readOptionalASN1(child, contextSpecificTag(constructedTag(tag)))) {
+    if (
+      !this.readOptionalASN1(child, contextSpecificTag(constructedTag(tag)))
+    ) {
       return false
     }
     output.present = child.present
@@ -589,7 +713,7 @@ class Parser {
 
   /**
    * readOptionalASN1BitString attempts to read an optional ASN.1 BIT STRING
-   * explicitly tagged with tag into out and advances. If no element with a matching
+   * explicitly tagged with tag into output.out and advances. If no element with a matching
    * tag is present, it sets ouput.present to false.
    * @param {Object} output output.out contains the BIT string object
    * @param {number} tag tag number, for example: 0, 1, ...
@@ -597,7 +721,9 @@ class Parser {
    */
   readOptionalASN1BitString (output, tag) {
     const child = {}
-    if (!this.readOptionalASN1(child, contextSpecificTag(constructedTag(tag)))) {
+    if (
+      !this.readOptionalASN1(child, contextSpecificTag(constructedTag(tag)))
+    ) {
       return false
     }
     output.present = child.present
@@ -611,6 +737,14 @@ class Parser {
     return true
   }
 
+  /**
+   * readOptionalASN1 attempts to read the contents of a DER-encoded ASN.1
+   * element (not including tag and length bytes) tagged with the given tag into
+   * output.out. It stores whether an element with the tag was found in output.present.
+   * @param {Object} output output.out is the result Parser instance, output.present is the existence flag.
+   * @param {number} tag the given tag value.
+   * @returns {boolean} reports whether the read was successful, treats non-existence as success.
+   */
   readOptionalASN1 (output, tag) {
     const present = this.peekASN1Tag(tag)
     if (present) {
@@ -623,6 +757,12 @@ class Parser {
     return true
   }
 
+  /**
+   * skipOptionalASN1 advances s over an ASN.1 element with the given tag, or
+   * else leaves s unchanged.
+   * @param {number} tag the given tag value.
+   * @returns {boolean} reports whether the read was successful, treats non-existence as success.
+   */
   skipOptionalASN1 (tag) {
     if (!this.peekASN1Tag(tag)) {
       return true
@@ -630,10 +770,24 @@ class Parser {
     return this.skipASN1(tag)
   }
 
+  /**
+   * readAnyASN1 reads the contents of a DER-encoded ASN.1 element (not including
+   * tag and length bytes) into output.out, sets output.tag to its tag, and advances.
+   * Tags greater than 30 are not supported (i.e. low-tag-number format only).
+   * @param {Object} output output.out is the new Parser, output.tag is its tag.
+   * @returns {boolean} reports whether the read was successful.
+   */
   readAnyASN1 (output) {
     return this._readASN1(output, true)
   }
 
+  /**
+   * readAnyASN1Element reads the contents of a DER-encoded ASN.1 element (including
+   * tag and length bytes) into output.out, sets output.tag to its tag, and advances.
+   * Tags greater than 30 are not supported (i.e. low-tag-number format only).
+   * @param {Object} output output.out is the new Parser, output.tag is its tag.
+   * @returns {boolean} reports whether the read was successful.
+   */
   readAnyASN1Element (output) {
     return this._readASN1(output, false)
   }
@@ -742,6 +896,11 @@ class Parser {
     return { success: true, value: new Parser(v) }
   }
 
+  /**
+   * readBytes reads n bytes and advances over them.
+   * @param {number} n byts length to read
+   * @returns {Object} the output contains byte array and success flag
+   */
   readBytes (n) {
     const v = this._read(n)
     if (v === undefined) {
@@ -750,6 +909,10 @@ class Parser {
     return { success: true, value: v }
   }
 
+  /**
+   * isEmpty reports whether the current byte array is empty.
+   * @returns {boolean} true or false
+   */
   isEmpty () {
     return this.length() === 0
   }
@@ -769,8 +932,6 @@ class Parser {
 }
 
 module.exports = {
-  constructedTag,
-  contextSpecificTag,
   Builder,
   Parser
 }

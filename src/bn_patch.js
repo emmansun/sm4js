@@ -1,4 +1,5 @@
 function patchBN (sjcl) {
+  /** Serialize to a byte array */
   sjcl.bn.prototype.toBytes = sjcl.bn.prototype.toBytes || function (l) {
     this.fullReduce()
     const result = []
@@ -17,6 +18,9 @@ function patchBN (sjcl) {
     return result
   }
 
+  /** @memberOf sjcl.bn
+   *  @this {sjcl.bn}
+   */
   sjcl.bn.fromBytes = function (bytes) {
     const Class = this
     const out = new Class()

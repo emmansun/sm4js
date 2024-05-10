@@ -6,8 +6,17 @@ function bindBytesCodecHex (sjcl) {
   if (sjcl.bytescodec) {
     return
   }
+  /**
+   * Byte array encoders and decoders.
+   * @namespace
+   */
   sjcl.bytescodec = {}
+  /**
+   * Hexadecimal
+   * @namespace
+   */
   sjcl.bytescodec.hex = {
+    /** Convert from a byte array to a hex string. */
     fromBytes: function (arr) {
       let res = ''
       for (let i = 0; i < arr.length; i++) {
@@ -19,6 +28,7 @@ function bindBytesCodecHex (sjcl) {
       }
       return res
     },
+    /** Convert from a hex string to a byte array. */
     toBytes: function (hexStr) {
       if (typeof hexStr !== 'string' || hexStr.length % 2 === 1) {
         throw new Error('Invalid hex string')

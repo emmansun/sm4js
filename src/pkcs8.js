@@ -37,6 +37,13 @@ function bindPKCS8 (sjcl) {
   require('./sm3').bindSM3(sjcl)
   require('./sm4').bindSM4(sjcl)
   require('./pkix').bindPKIX(sjcl)
+  /**
+   * @namespace
+   * @description
+   * <p>
+   * PKCS#8 EC private key handling functions.
+   * </p>
+   */
   sjcl.pkcs8 = {
     /**
      * Marshal EC private key to PKCS#8 DER-encoded ASN.1.

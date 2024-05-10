@@ -4,8 +4,8 @@
 
 function bindKDF (sjcl) {
   /** KDF with the specified hash function.
-   * @param {Number} keyBitLength The output key length, in bits.
-   * @param {String|bitArray} z The z for KDF.
+   * @param {number} keyBitLength The output key length, in bits.
+   * @param {string|bitArray} z The z for KDF.
    * @param {Object} [Hash=sjcl.hash.sm3] The hash function to use.
    * @return {bitArray} derived key.
    */
