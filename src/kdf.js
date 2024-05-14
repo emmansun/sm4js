@@ -15,8 +15,9 @@ function bindKDF (sjcl) {
       z = sjcl.codec.utf8String.toBits(z)
     }
     let count = 1
-    const hash = new Hash()
-    hash.update(z)
+    const basehash = new Hash()
+    basehash.update(z)
+    let hash = new Hash(basehash)
     hash.update([count])
     let ret = hash.finalize()
     const hashLen = sjcl.bitArray.bitLength(ret)
@@ -27,7 +28,7 @@ function bindKDF (sjcl) {
     }
     for (let i = 1; i < loops; i++) {
       count++
-      hash.update(z)
+      hash = new Hash(basehash)
       hash.update([count])
       ret = sjcl.bitArray.concat(ret, hash.finalize())
     }
