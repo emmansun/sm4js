@@ -1,6 +1,6 @@
 {
     "name": "gmsm-sm4js",
-    "version": "0.7.0-beta.4",
+    "version": "0.7.0",
     "description": "Pure Javascript implementation of the SM2/SM3/SM4 cipher based on sjcl",
     "keywords": [
         "sm2",
