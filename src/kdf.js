@@ -2,12 +2,12 @@
  *  @author Emman Sun
  */
 
-function bindKDF (sjcl) {
+export default function bindKDF (sjcl) {
   /** KDF with the specified hash function.
    * @param {number} keyBitLength The output key length, in bits.
-   * @param {string|bitArray} z The z for KDF.
+   * @param {string|Array} z The z for KDF.
    * @param {Object} [Hash=sjcl.hash.sm3] The hash function to use.
-   * @return {bitArray} derived key.
+   * @return {Array} derived key.
    */
   sjcl.misc.kdf = sjcl.misc.kdf || function (keyBitLength, z, Hash) {
     Hash = Hash || sjcl.hash.sm3
@@ -34,8 +34,4 @@ function bindKDF (sjcl) {
     }
     return sjcl.bitArray.clamp(ret, keyBitLength)
   }
-}
-
-module.exports = {
-  bindKDF
 }

@@ -2,11 +2,13 @@
  *  @author Emman Sun
  */
 
-function bindSM3 (sjcl) {
+export default function bindSM3 (sjcl) {
   if (sjcl.hash.sm3) return
+
   /**
    * Context for a SM3 operation in progress.
    * @constructor
+   * @param {Object} [hash] The hash to copy.
    */
   sjcl.hash.sm3 = function (hash) {
     if (!this._t[0]) {
@@ -24,8 +26,8 @@ function bindSM3 (sjcl) {
   /**
    * Hash a string or an array of words.
    * @static
-   * @param {bitArray|string} data the data to hash.
-   * @return {bitArray} The hash value, an array of 16 big-endian words.
+   * @param {sjcl.BitArray|string} data the data to hash.
+   * @return {sjcl.BitArray} The hash value, an array of 16 big-endian words.
    */
   sjcl.hash.sm3.hash = function (data) {
     const SM3 = sjcl.hash.sm3
@@ -52,7 +54,7 @@ function bindSM3 (sjcl) {
 
     /**
      * Input several words to the hash.
-     * @param {bitArray|string} data the data to hash.
+     * @param {sjcl.BitArray|string} data the data to hash.
      * @return this
      */
     update: function (data) {
@@ -85,7 +87,7 @@ function bindSM3 (sjcl) {
 
     /**
      * Complete hashing and output the hash value.
-     * @return {bitArray} The hash value, an array of 8 big-endian words.
+     * @return {sjcl.BitArray} The hash value, an array of 8 big-endian words.
      */
     finalize: function () {
       let i
@@ -114,7 +116,7 @@ function bindSM3 (sjcl) {
 
     /**
      * Perform one cycle of SM3.
-     * @param {Uint32Array|bitArray} w one block of words.
+     * @param {Uint32Array|sjcl.BitArray} w one block of words.
      * @private
      */
     _block: function (w) {
@@ -150,8 +152,10 @@ function bindSM3 (sjcl) {
         e = this._p0(tt2)
       }
       for (let i = 12; i < 16; i++) {
-        W[i + 4] = this._p1(W[i - 12] ^ W[i - 5] ^ this._rotateLeft32(W[i + 1], 15)) ^
-          this._rotateLeft32(W[i - 9], 7) ^ W[i - 2]
+        W[i + 4] =
+          this._p1(W[i - 12] ^ W[i - 5] ^ this._rotateLeft32(W[i + 1], 15)) ^
+          this._rotateLeft32(W[i - 9], 7) ^
+          W[i - 2]
         tt2 = this._rotateLeft32(a, 12)
         ss1 = this._rotateLeft32(tt2 + e + t[i], 7)
         ss2 = ss1 ^ tt2
@@ -167,8 +171,10 @@ function bindSM3 (sjcl) {
         e = this._p0(tt2)
       }
       for (let i = 16; i < 64; i++) {
-        W[i + 4] = this._p1(W[i - 12] ^ W[i - 5] ^ this._rotateLeft32(W[i + 1], 15)) ^
-          this._rotateLeft32(W[i - 9], 7) ^ W[i - 2]
+        W[i + 4] =
+          this._p1(W[i - 12] ^ W[i - 5] ^ this._rotateLeft32(W[i + 1], 15)) ^
+          this._rotateLeft32(W[i - 9], 7) ^
+          W[i - 2]
         tt2 = this._rotateLeft32(a, 12)
         ss1 = this._rotateLeft32(tt2 + e + t[i], 7)
         ss2 = ss1 ^ tt2
@@ -242,8 +248,4 @@ function bindSM3 (sjcl) {
       return ((y ^ z) & x) ^ z
     }
   }
-}
-
-module.exports = {
-  bindSM3
 }

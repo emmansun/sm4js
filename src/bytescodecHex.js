@@ -2,7 +2,7 @@
  *  @author Emman Sun
  */
 
-function bindBytesCodecHex (sjcl) {
+export default function bindBytesCodecHex (sjcl) {
   if (sjcl.bytescodec) {
     return
   }
@@ -16,7 +16,9 @@ function bindBytesCodecHex (sjcl) {
    * @namespace
    */
   sjcl.bytescodec.hex = {
-    /** Convert from a byte array to a hex string. */
+    /** Convert from a byte array to a hex string.
+     * @param {Array} arr The byte array to convert.
+     */
     fromBytes: function (arr) {
       let res = ''
       for (let i = 0; i < arr.length; i++) {
@@ -28,7 +30,9 @@ function bindBytesCodecHex (sjcl) {
       }
       return res
     },
-    /** Convert from a hex string to a byte array. */
+    /** Convert from a hex string to a byte array.
+     * @param {string} hexStr The hex string to convert.
+     */
     toBytes: function (hexStr) {
       if (typeof hexStr !== 'string' || hexStr.length % 2 === 1) {
         throw new Error('Invalid hex string')
@@ -41,5 +45,3 @@ function bindBytesCodecHex (sjcl) {
     }
   }
 }
-
-module.exports = { bindBytesCodecHex }

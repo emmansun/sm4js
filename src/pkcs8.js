@@ -1,7 +1,10 @@
 /** @fileOverview parse pkcs8 implementation.
  *  @author Emman Sun
  */
-const { Builder, Parser } = require('./asn1')
+import { Builder, Parser } from './asn1.js'
+import bindSM3 from './sm3.js'
+import bindSM4 from './sm4.js'
+import bindPKIX from './pkix.js'
 
 const oidEccPublicKey = '1.2.840.10045.2.1'
 const oidPBES2 = '1.2.840.113549.1.5.13'
@@ -16,12 +19,32 @@ const supportedHMACAlgorithms = [
 
 const supportedEncryptionSchemes = [
   { keyBitLen: 128, cipher: 'aes', mode: 'cbc', oid: '2.16.840.1.101.3.4.1.2' },
-  { keyBitLen: 192, cipher: 'aes', mode: 'cbc', oid: '2.16.840.1.101.3.4.1.22' },
-  { keyBitLen: 256, cipher: 'aes', mode: 'cbc', oid: '2.16.840.1.101.3.4.1.42' },
+  {
+    keyBitLen: 192,
+    cipher: 'aes',
+    mode: 'cbc',
+    oid: '2.16.840.1.101.3.4.1.22'
+  },
+  {
+    keyBitLen: 256,
+    cipher: 'aes',
+    mode: 'cbc',
+    oid: '2.16.840.1.101.3.4.1.42'
+  },
   { keyBitLen: 128, cipher: 'sm4', mode: 'cbc', oid: '1.2.156.10197.1.104.2' },
   { keyBitLen: 128, cipher: 'aes', mode: 'gcm', oid: '2.16.840.1.101.3.4.1.6' },
-  { keyBitLen: 192, cipher: 'aes', mode: 'gcm', oid: '2.16.840.1.101.3.4.1.26' },
-  { keyBitLen: 256, cipher: 'aes', mode: 'gcm', oid: '2.16.840.1.101.3.4.1.46' },
+  {
+    keyBitLen: 192,
+    cipher: 'aes',
+    mode: 'gcm',
+    oid: '2.16.840.1.101.3.4.1.26'
+  },
+  {
+    keyBitLen: 256,
+    cipher: 'aes',
+    mode: 'gcm',
+    oid: '2.16.840.1.101.3.4.1.46'
+  },
   { keyBitLen: 128, cipher: 'sm4', mode: 'gcm', oid: '1.2.156.10197.1.104.8' }
 ]
 
@@ -29,14 +52,14 @@ function _isValidObject (obj) {
   return obj && typeof obj === 'object' && !Array.isArray(obj)
 }
 
-function bindPKCS8 (sjcl) {
+export default function bindPKCS8 (sjcl) {
   if (sjcl.pkcs8) return
   sjcl.beware[
     "CBC mode is dangerous because it doesn't protect message integrity."
   ]()
-  require('./sm3').bindSM3(sjcl)
-  require('./sm4').bindSM4(sjcl)
-  require('./pkix').bindPKIX(sjcl)
+  bindSM3(sjcl)
+  bindSM4(sjcl)
+  bindPKIX(sjcl)
   /**
    * @namespace
    * @description
@@ -52,7 +75,12 @@ function bindPKCS8 (sjcl) {
      * @param {string|bitArray} [password] - the password to encrypt the private key
      * @param {Object} [opts] - PKCS#5  Password-Based Cryptography related parameters
      */
-    marshalPKCS8ECPrivateKey: function (key, includePublicKey = true, password, opts) {
+    marshalPKCS8ECPrivateKey: function (
+      key,
+      includePublicKey = true,
+      password,
+      opts
+    ) {
       if (!password) {
         return this._marshalPKCS8ECPrivateKey(key, includePublicKey)
       }
@@ -60,13 +88,21 @@ function bindPKCS8 (sjcl) {
       const cipherOpts = opts.cipherOpts
       const kdfOpts = opts.kdfOpts
 
-      const keyPlaintext = sjcl.codec.bytes.toBits(this._marshalPKCS8ECPrivateKey(key, includePublicKey))
+      const keyPlaintext = sjcl.codec.bytes.toBits(
+        this._marshalPKCS8ECPrivateKey(key, includePublicKey)
+      )
 
       // derive key
       const hmacOID = this._getHMACOID(kdfOpts)
       const Hash = sjcl.hash[kdfOpts.hash]
       const salt = this._generateSalt(kdfOpts)
-      const encryptionKey = this._pbkdf2(password, salt, kdfOpts.iter, cipherOpts.keyBitLen, Hash)
+      const encryptionKey = this._pbkdf2(
+        password,
+        salt,
+        kdfOpts.iter,
+        cipherOpts.keyBitLen,
+        Hash
+      )
 
       // encryption key material
       const cipherOID = this._getCipherOID(cipherOpts)
@@ -78,7 +114,15 @@ function bindPKCS8 (sjcl) {
         ivLen = Math.ceil(cipherOpts.gcm.nonceLen / 4)
       }
       const iv = sjcl.random.randomWords(ivLen, 0)
-      const keyCiphertext = sjcl.codec.bytes.fromBits(sjcl.mode[cipherOpts.mode].encrypt(cipher, keyPlaintext, iv, undefined, cipherOpts.gcm.ICVlen * 8))
+      const keyCiphertext = sjcl.codec.bytes.fromBits(
+        sjcl.mode[cipherOpts.mode].encrypt(
+          cipher,
+          keyPlaintext,
+          iv,
+          undefined,
+          cipherOpts.gcm.ICVlen * 8
+        )
+      )
 
       // marshal
       const builder = new Builder()
@@ -134,12 +178,18 @@ function bindPKCS8 (sjcl) {
       let cipherOID
       for (let i = 0; i < supportedEncryptionSchemes.length; i++) {
         const curScheme = supportedEncryptionSchemes[i]
-        if (cipherOpts.cipher === curScheme.cipher && cipherOpts.mode === curScheme.mode && cipherOpts.keyBitLen === curScheme.keyBitLen) {
+        if (
+          cipherOpts.cipher === curScheme.cipher &&
+          cipherOpts.mode === curScheme.mode &&
+          cipherOpts.keyBitLen === curScheme.keyBitLen
+        ) {
           cipherOID = curScheme.oid
         }
       }
       if (!cipherOID) {
-        throw new Error(`pkcs8: unsupported cipher ${cipherOpts.cipher}-${cipherOpts.keyBitLen}-${cipherOpts.mode}`)
+        throw new Error(
+          `pkcs8: unsupported cipher ${cipherOpts.cipher}-${cipherOpts.keyBitLen}-${cipherOpts.mode}`
+        )
       }
       return cipherOID
     },
@@ -180,7 +230,11 @@ function bindPKCS8 (sjcl) {
     },
 
     _marshalPKCS8ECPrivateKey: function (key, includePublicKey = true) {
-      if (!(key instanceof sjcl.ecc.sm2.secretKey) && !(key instanceof sjcl.ecc.ecdsa.secretKey) && !(key instanceof sjcl.ecc.elGamal.secretKey)) {
+      if (
+        !(key instanceof sjcl.ecc.sm2.secretKey) &&
+        !(key instanceof sjcl.ecc.ecdsa.secretKey) &&
+        !(key instanceof sjcl.ecc.elGamal.secretKey)
+      ) {
         throw new Error('pkcs8: invalid/unsupported private key')
       }
       const serialized = key.serialize()
@@ -196,7 +250,9 @@ function bindPKCS8 (sjcl) {
           b1.addASN1ObjectIdentifier(oidEccPublicKey)
           b1.addASN1ObjectIdentifier(curveOID)
         })
-        b.addASN1OctetString(sjcl.pkix.marshalECPrivateKey(key, includePublicKey))
+        b.addASN1OctetString(
+          sjcl.pkix.marshalECPrivateKey(key, includePublicKey)
+        )
       })
       return builder.bytes()
     },
@@ -204,7 +260,7 @@ function bindPKCS8 (sjcl) {
     /**
      * parsePKCS8ECPrivateKey parses private key from DER-encoded byte array
      * @param {Array} keyDer DER-encoded byte array
-     * @param {string|bitArray} [password] the password used to decrypt the key material
+     * @param {string|sjcl.BitArray} [password] the password used to decrypt the key material
      * @returns {sjcl.ecc.sm2.secretKey|sjcl.ecc.ecdsa.secretKey} the private key object
      */
     parsePKCS8ECPrivateKey: function (keyDer, password) {
@@ -225,13 +281,13 @@ function bindPKCS8 (sjcl) {
       const encryptedKey = {}
       if (
         !input.readASN1Sequence(inner) ||
-            !input.isEmpty() ||
-            !inner.out.readASN1Sequence(alg) ||
-            !alg.out.readASN1ObjectIdentifier(algOID) ||
-            !alg.out.readAnyASN1Element(algParam) ||
-            !alg.out.isEmpty() ||
-            !inner.out.readASN1OctetString(encryptedKey) ||
-            !inner.out.isEmpty()
+        !input.isEmpty() ||
+        !inner.out.readASN1Sequence(alg) ||
+        !alg.out.readASN1ObjectIdentifier(algOID) ||
+        !alg.out.readAnyASN1Element(algParam) ||
+        !alg.out.isEmpty() ||
+        !inner.out.readASN1OctetString(encryptedKey) ||
+        !inner.out.isEmpty()
       ) {
         throw new Error('pkcs8: invalid PKCS#8 asn1')
       }
@@ -243,33 +299,56 @@ function bindPKCS8 (sjcl) {
       algOID = {}
       const keyDeriveStr = {}
       const encryptionSchemeStr = {}
-      if (!algParam.out.readASN1Sequence(inner) ||
-          !inner.out.readASN1Sequence(keyDeriveStr) ||
-          !inner.out.readASN1Sequence(encryptionSchemeStr) ||
-          !inner.out.isEmpty() ||
-          !keyDeriveStr.out.readASN1ObjectIdentifier(algOID)
+      if (
+        !algParam.out.readASN1Sequence(inner) ||
+        !inner.out.readASN1Sequence(keyDeriveStr) ||
+        !inner.out.readASN1Sequence(encryptionSchemeStr) ||
+        !inner.out.isEmpty() ||
+        !keyDeriveStr.out.readASN1ObjectIdentifier(algOID)
       ) {
         throw new Error('pkcs8: invalid PKCS #5 v2.0 asn1')
       }
 
       const kdfParam = this._parseKDFParameters(algOID.out, keyDeriveStr.out)
-      const encrytpionParam = this._parseEncryptionScheme(encryptionSchemeStr.out)
+      const encrytpionParam = this._parseEncryptionScheme(
+        encryptionSchemeStr.out
+      )
       const key = this._deriveKey(kdfParam, encrytpionParam, password)
-      const plaintext = this._decryptKeyContent(key, encrytpionParam, encryptedKey.out)
+      const plaintext = this._decryptKeyContent(
+        key,
+        encrytpionParam,
+        encryptedKey.out
+      )
       return this._parsePKCS8ECPrivateKey(sjcl.codec.bytes.fromBits(plaintext))
     },
 
     _deriveKey: function (kdfParam, encrytpionParam, password) {
-      return this._pbkdf2(password, sjcl.codec.bytes.toBits(kdfParam.salt), kdfParam.iterCnt, encrytpionParam.scheme.keyBitLen, kdfParam.scheme)
+      return this._pbkdf2(
+        password,
+        sjcl.codec.bytes.toBits(kdfParam.salt),
+        kdfParam.iterCnt,
+        encrytpionParam.scheme.keyBitLen,
+        kdfParam.scheme
+      )
     },
 
     _decryptKeyContent: function (key, encrytpionParam, encryptedKey) {
       const Cipher = sjcl.cipher[encrytpionParam.scheme.cipher]
       const cipher = new Cipher(key)
       if (encrytpionParam.scheme.mode === 'gcm') {
-        return sjcl.mode[encrytpionParam.scheme.mode].decrypt(cipher, sjcl.codec.bytes.toBits(encryptedKey), sjcl.codec.bytes.toBits(encrytpionParam.iv), undefined, encrytpionParam.ICVlen * 8)
+        return sjcl.mode[encrytpionParam.scheme.mode].decrypt(
+          cipher,
+          sjcl.codec.bytes.toBits(encryptedKey),
+          sjcl.codec.bytes.toBits(encrytpionParam.iv),
+          undefined,
+          encrytpionParam.ICVlen * 8
+        )
       }
-      return sjcl.mode[encrytpionParam.scheme.mode].decrypt(cipher, sjcl.codec.bytes.toBits(encryptedKey), sjcl.codec.bytes.toBits(encrytpionParam.iv))
+      return sjcl.mode[encrytpionParam.scheme.mode].decrypt(
+        cipher,
+        sjcl.codec.bytes.toBits(encryptedKey),
+        sjcl.codec.bytes.toBits(encrytpionParam.iv)
+      )
     },
 
     _parseEncryptionScheme: function (encryptionSchemeParser) {
@@ -291,10 +370,12 @@ function bindPKCS8 (sjcl) {
       if (ret.scheme.mode === 'gcm') {
         const inner = {}
         const ICVlenStr = {}
-        if (!encryptionSchemeParser.readASN1Sequence(inner) ||
-                    !inner.out.readASN1OctetString(ivStr) ||
-                    !inner.out.readASN1Unsigned(ICVlenStr) ||
-                    !inner.out.isEmpty()) {
+        if (
+          !encryptionSchemeParser.readASN1Sequence(inner) ||
+          !inner.out.readASN1OctetString(ivStr) ||
+          !inner.out.readASN1Unsigned(ICVlenStr) ||
+          !inner.out.isEmpty()
+        ) {
           throw new Error('pkcs8: invalid ecnryption scheme parameters')
         }
         ret.ICVlen = ICVlenStr.out
@@ -323,7 +404,8 @@ function bindPKCS8 (sjcl) {
       const inner = {}
       const saltStr = {}
       const iterStr = {}
-      if (!paramParser.readASN1Sequence(inner) ||
+      if (
+        !paramParser.readASN1Sequence(inner) ||
         !paramParser.isEmpty() ||
         !inner.out.readASN1OctetString(saltStr) ||
         !inner.out.readASN1Unsigned(iterStr)
@@ -339,12 +421,19 @@ function bindPKCS8 (sjcl) {
       const algStr = {}
       const algOIDStr = {}
       if (inner.out.peekASN1Tag(0x30)) {
-        if (!inner.out.readASN1Sequence(algStr) ||
-            !algStr.out.readASN1ObjectIdentifier(algOIDStr)) {
+        if (
+          !inner.out.readASN1Sequence(algStr) ||
+          !algStr.out.readASN1ObjectIdentifier(algOIDStr)
+        ) {
           throw new Error('pkcs8: invalid PRF AlgorithmIdentifier')
         }
       }
-      const ret = { alg: algOID, salt: saltStr.out, iterCnt, prf: algOIDStr.out }
+      const ret = {
+        alg: algOID,
+        salt: saltStr.out,
+        iterCnt,
+        prf: algOIDStr.out
+      }
       if (ret.prf) {
         for (let i = 0; i < supportedHMACAlgorithms.length; i++) {
           if (ret.prf === supportedHMACAlgorithms[i].oid) {
@@ -370,13 +459,13 @@ function bindPKCS8 (sjcl) {
       const keyStr = {}
       if (
         !input.readASN1Sequence(inner) ||
-            !input.isEmpty() ||
-            !inner.out.readASN1Unsigned(version) ||
-            !inner.out.readASN1Sequence(alg) ||
-            !alg.out.readASN1ObjectIdentifier(algOID) ||
-            !alg.out.readASN1ObjectIdentifier(algParam) ||
-            !alg.out.isEmpty() ||
-            !inner.out.readASN1OctetString(keyStr)
+        !input.isEmpty() ||
+        !inner.out.readASN1Unsigned(version) ||
+        !inner.out.readASN1Sequence(alg) ||
+        !alg.out.readASN1ObjectIdentifier(algOID) ||
+        !alg.out.readASN1ObjectIdentifier(algParam) ||
+        !alg.out.isEmpty() ||
+        !inner.out.readASN1OctetString(keyStr)
       ) {
         throw new Error('pkcs8: invalid pkcs8 EC private key asn1')
       }
@@ -407,7 +496,9 @@ function bindPKCS8 (sjcl) {
       const prf = new HMAC(password, Hash)
       const b = sjcl.bitArray
 
-      let u; let ui; let out = []
+      let u
+      let ui
+      let out = []
 
       for (let k = 1; 32 * out.length < (length || 1); k++) {
         u = ui = prf.encrypt(b.concat(salt, [k]))
@@ -422,13 +513,11 @@ function bindPKCS8 (sjcl) {
         out = out.concat(u)
       }
 
-      if (length) { out = b.clamp(out, length) }
+      if (length) {
+        out = b.clamp(out, length)
+      }
 
       return out
     }
   }
-}
-
-module.exports = {
-  bindPKCS8
 }

@@ -1,6 +1,6 @@
 {
     "name": "gmsm-sm4js",
-    "version": "0.6.3",
+    "version": "0.7.0-beta.4",
     "description": "Pure Javascript implementation of the SM2/SM3/SM4 cipher based on sjcl",
     "keywords": [
         "sm2",
@@ -11,12 +11,24 @@
         "asn1",
         "sjcl"
     ],
-    "main": "index.js",
+    "main": "lib/index.cjs",
+    "module": "src/index.js",
+    "exports": {
+        ".": {
+            "require": "./lib/index.cjs",
+            "default": "./src/index.js"
+        }
+    },
+    "type": "module",
     "scripts": {
-        "test": "standard && node test/bn_patch_test.js && node test/asn1_test.js && node test/sm3_test.js && node test/sm4_test.js && node test/kdf_test.js && node test/sm2_test.js && node test/pkix_test.js && node test/pkcs8_test.js"
+        "build": "babel src --out-dir lib --out-file-extension .cjs",
+        "fix": "standard --fix \"src/*.js\" \"test/*.js\"",
+        "test": "tape test/*.js"
     },
     "devDependencies": {
         "sjcl-with-all": "^1.0.8",
+        "@babel/cli": "^7.24.7",
+        "@babel/preset-env": "^7.24.7",
         "standard": "^17.1.0",
         "tape": "*"
     },

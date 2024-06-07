@@ -1,0 +1,11 @@
+{
+    "presets": [
+      ["@babel/preset-env", {
+        "targets": {
+          "node": "current",
+          "browsers": ["last 2 versions", "not dead"]
+        }
+      }]
+    ],
+    "plugins": ["./change-js-to-cjs.cjs"]
+}

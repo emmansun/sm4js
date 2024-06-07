@@ -1,12 +1,13 @@
 /** @fileOverview parse PKIX public key and SEC1 private key implementation.
  *  @author Emman Sun
  */
-const { Builder, Parser } = require('./asn1')
+import { Builder, Parser } from './asn1.js'
+import bindSM2 from './sm2.js'
 
 const oidEccPublicKey = '1.2.840.10045.2.1'
-function bindPKIX (sjcl) {
+export default function bindPKIX (sjcl) {
   if (sjcl.pkix) return
-  require('./sm2').bindSM2(sjcl)
+  bindSM2(sjcl)
   if (!sjcl.ecc.curves.c256.oid) {
     sjcl.ecc.curves.c256.oid = '1.2.840.10045.3.1.7'
     sjcl.ecc.curves.c224.oid = '1.3.132.0.33'
@@ -22,11 +23,11 @@ function bindPKIX (sjcl) {
    * </p>
    */
   sjcl.pkix = {
-  /**
-   * parsePKIXPublicKey parses an EC public key from DER-encoded byte array
-   * @param {Array} keyDer DER-encoded byte array
-   * @returns {sjcl.ecc.sm2.publicKey|sjcl.ecc.ecdsa.publicKey}
-   */
+    /**
+     * parsePKIXPublicKey parses an EC public key from DER-encoded byte array
+     * @param {Array} keyDer DER-encoded byte array
+     * @returns {sjcl.ecc.sm2.publicKey|sjcl.ecc.ecdsa.publicKey}
+     */
     parsePKIXPublicKey: function (keyDer) {
       const input = new Parser(keyDer)
       const inner = {}
@@ -40,7 +41,6 @@ function bindPKIX (sjcl) {
         !inner.out.readASN1BitString(bitString) ||
         !inner.out.isEmpty() ||
         !algInner.out.readASN1ObjectIdentifier(alg)
-
       ) {
         throw new Error('pkix: invalid PKIX public key asn1')
       }
@@ -51,7 +51,10 @@ function bindPKIX (sjcl) {
         throw new Error('pkix: unsupported point format')
       }
       const curveOID = {}
-      if (!algInner.out.readASN1ObjectIdentifier(curveOID) || !algInner.out.isEmpty()) {
+      if (
+        !algInner.out.readASN1ObjectIdentifier(curveOID) ||
+        !algInner.out.isEmpty()
+      ) {
         throw new Error('pkix: invalid PKIX public key asn1')
       }
       let publicKey
@@ -60,10 +63,15 @@ function bindPKIX (sjcl) {
         if (curcurve.oid === curveOID.out) {
           if (c === 'sm2p256v1') {
             const KeyClazz = sjcl.ecc.sm2.publicKey
-            publicKey = new KeyClazz(sjcl.codec.bytes.toBits(bitString.out.bytes.slice(1)))
+            publicKey = new KeyClazz(
+              sjcl.codec.bytes.toBits(bitString.out.bytes.slice(1))
+            )
           } else {
             const KeyClazz = sjcl.ecc.ecdsa.publicKey
-            publicKey = new KeyClazz(curcurve, sjcl.codec.bytes.toBits(bitString.out.bytes.slice(1)))
+            publicKey = new KeyClazz(
+              curcurve,
+              sjcl.codec.bytes.toBits(bitString.out.bytes.slice(1))
+            )
           }
         }
       }
@@ -79,7 +87,11 @@ function bindPKIX (sjcl) {
      * @returns {Array} the DER-encoded byte array
      */
     marshalPKIXPublicKey: function (publicKey) {
-      if (!(publicKey instanceof sjcl.ecc.sm2.publicKey) && !(publicKey instanceof sjcl.ecc.ecdsa.publicKey) && !(publicKey instanceof sjcl.ecc.elGamal.publicKey)) {
+      if (
+        !(publicKey instanceof sjcl.ecc.sm2.publicKey) &&
+        !(publicKey instanceof sjcl.ecc.ecdsa.publicKey) &&
+        !(publicKey instanceof sjcl.ecc.elGamal.publicKey)
+      ) {
         throw new Error('pkix: invalid/unsupported public key')
       }
       const serialized = publicKey.serialize()
@@ -93,7 +105,9 @@ function bindPKIX (sjcl) {
           b1.addASN1ObjectIdentifier(oidEccPublicKey)
           b1.addASN1ObjectIdentifier(curveOID)
         })
-        b.addASN1BitString(sjcl.bytescodec.hex.toBytes(`04${serialized.point}`))
+        b.addASN1BitString(
+          sjcl.bytescodec.hex.toBytes(`04${serialized.point}`)
+        )
       })
       return builder.bytes()
     },
@@ -114,12 +128,13 @@ function bindPKIX (sjcl) {
       const pkStr = {}
       if (
         !input.readASN1Sequence(inner) ||
-          !input.isEmpty() ||
-          !inner.out.readASN1Signed(version) ||
-          !inner.out.readASN1OctetString(keyStr) ||
-          !inner.out.readOptionalASN1ObjectIdentifier(oid, 0) ||
-          !inner.out.readOptionalASN1BitString(pkStr, 1) ||
-          !inner.out.isEmpty()) {
+        !input.isEmpty() ||
+        !inner.out.readASN1Signed(version) ||
+        !inner.out.readASN1OctetString(keyStr) ||
+        !inner.out.readOptionalASN1ObjectIdentifier(oid, 0) ||
+        !inner.out.readOptionalASN1BitString(pkStr, 1) ||
+        !inner.out.isEmpty()
+      ) {
         throw new Error('sec1: invalid EC private key asn1')
       }
       if (version.out !== 1) {
@@ -157,7 +172,11 @@ function bindPKIX (sjcl) {
      * @returns {Array} byte array
      */
     marshalECPrivateKey: function (key, includePublicKey = true) {
-      if (!(key instanceof sjcl.ecc.sm2.secretKey) && !(key instanceof sjcl.ecc.ecdsa.secretKey) && !(key instanceof sjcl.ecc.elGamal.secretKey)) {
+      if (
+        !(key instanceof sjcl.ecc.sm2.secretKey) &&
+        !(key instanceof sjcl.ecc.ecdsa.secretKey) &&
+        !(key instanceof sjcl.ecc.elGamal.secretKey)
+      ) {
         throw new Error('sec1: invalid/unsupported private key')
       }
       const serialized = key.serialize()
@@ -178,15 +197,15 @@ function bindPKIX (sjcl) {
         })
         if (includePublicKey) {
           b.addASN1ExplicitTag(1, (b1) => {
-            b1.addASN1BitString(sjcl.bytescodec.hex.toBytes(`04${sjcl.codec.hex.fromBits(point.toBits())}`))
+            b1.addASN1BitString(
+              sjcl.bytescodec.hex.toBytes(
+                `04${sjcl.codec.hex.fromBits(point.toBits())}`
+              )
+            )
           })
         }
       })
       return builder.bytes()
     }
   }
-}
-
-module.exports = {
-  bindPKIX
 }

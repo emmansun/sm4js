@@ -5,14 +5,14 @@
 const rounds = 32
 const fk = [0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc]
 
-function bindSM4 (sjcl) {
+export default function bindSM4 (sjcl) {
   if (sjcl.cipher.sm4) return
   /**
    * Schedule out an SM4 key for both encryption and decryption.  This
    * is a low-level class.  Use a cipher mode to do bulk encryption.
    *
    * @constructor
-   * @param {Array} key The key as an array of 4 words.
+   * @param {sjcl.BitArray} key The key as an array of 4 words.
    */
   sjcl.cipher.sm4 = function (key) {
     if (!this._tables[0][0]) {
@@ -50,8 +50,8 @@ function bindSM4 (sjcl) {
   sjcl.cipher.sm4.prototype = {
     /**
      * Encrypt an array of 4 big-endian words.
-     * @param {Array} data The plaintext.
-     * @return {Array} The ciphertext.
+     * @param {sjcl.BitArray} data The plaintext.
+     * @return {sjcl.BitArray} The ciphertext.
      */
     encrypt: function (data) {
       return this._crypt(data, 0)
@@ -59,8 +59,8 @@ function bindSM4 (sjcl) {
 
     /**
      * Decrypt an array of 4 big-endian words.
-     * @param {Array} data The ciphertext.
-     * @return {Array} The plaintext.
+     * @param {sjcl.BitArray} data The ciphertext.
+     * @return {sjcl.BitArray} The plaintext.
      */
     decrypt: function (data) {
       return this._crypt(data, 1)
@@ -130,7 +130,7 @@ function bindSM4 (sjcl) {
     /**
      * Encryption and decryption core.
      * @param {Array} input Four words to be encrypted or decrypted.
-     * @param dir The direction, 0 for encrypt and 1 for decrypt.
+     * @param {number} dir The direction, 0 for encrypt and 1 for decrypt.
      * @return {Array} The four encrypted or decrypted words.
      * @private
      */
@@ -192,8 +192,4 @@ function bindSM4 (sjcl) {
       )
     }
   }
-}
-
-module.exports = {
-  bindSM4
 }

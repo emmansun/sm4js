@@ -33,8 +33,11 @@ class Builder {
    * @constructor
    */
   constructor () {
+    this.root = null
     this.result = []
     this.offset = 0
+    this.pendingLenLen = 0
+    this.pendingIsASN1 = false
   }
 
   /**
@@ -89,7 +92,7 @@ class Builder {
   /**
    * addASN1BitString appends a DER-encoded ASN.1 BIT STRING. This does not
    * support BIT STRINGs that are not a whole number of bytes.
-   * @param {Array} bytes the byte array
+   * @param {Array<number>} bytes the byte array
    */
   addASN1BitString (bytes) {
     this.addASN1(DERBITSTRING, (builder) => {
@@ -181,7 +184,7 @@ class Builder {
    */
   addASN1Signed (v) {
     this.addASN1(DERINTEGER, (builder) => {
-      if (Math.sign(v) === -1) {
+      if (v < 0) {
         const vMunus1 = -v - 1
         let len = 1
         for (let i = vMunus1; i >= 0x80; i >>= 8) {
@@ -564,7 +567,7 @@ class Parser {
       return false
     }
     if (v.out < 80) {
-      components.push(parseInt(v.out / 40))
+      components.push(Math.floor(v.out / 40))
       components.push(v.out % 40)
     } else {
       components.push(2)
@@ -824,7 +827,7 @@ class Parser {
       // Long-form length (section 8.1.3.5). Bits 1-7 encode the number of octets
       // used to encode the length.
       const lenLen = lenBytes & 0x7f
-      if (lenLen === 0 || lenLen > 4 || this.length < lenLen + 2) {
+      if (lenLen === 0 || lenLen > 4 || this.length() < lenLen + 2) {
         return false
       }
       const lenBytesParser = new Parser(this.bytes.slice(2, lenLen + 2))
@@ -931,7 +934,4 @@ class Parser {
   }
 }
 
-module.exports = {
-  Builder,
-  Parser
-}
+export { Builder, Parser }

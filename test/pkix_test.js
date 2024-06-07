@@ -1,6 +1,7 @@
-const test = require('tape')
-const sjcl = require('sjcl-with-all')
-require('../src/pkix').bindPKIX(sjcl)
+import test from 'tape'
+import sjcl from 'sjcl-with-all'
+import bindPKIX from '../src/pkix.js'
+bindPKIX(sjcl)
 
 const BigInt = sjcl.bn
 
@@ -67,7 +68,9 @@ test('pkix: marshal C224/C256/C384/C521 public key', function (t) {
 
 test('pkix: marshal SM2 SEC1 private key', function (t) {
   const keys = sjcl.ecc.sm2.generateKeys(
-    new BigInt('0x8604263B78B289BDD6B927D543B36088479688E7171099AD36328829C3CDE2A5')
+    new BigInt(
+      '0x8604263B78B289BDD6B927D543B36088479688E7171099AD36328829C3CDE2A5'
+    )
   )
   let bytes = sjcl.pkix.marshalECPrivateKey(keys.sec)
   t.equal(
@@ -86,7 +89,11 @@ test('pkix: marshal SM2 SEC1 private key', function (t) {
 })
 
 test('pkix: parse SM2 SEC1 private key', function (t) {
-  let prv = sjcl.pkix.parseECPrivateKey(sjcl.bytescodec.hex.toBytes('307702010104208604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5a00a06082a811ccf5501822da1440342000427b8a4ded46ab34c1bff39077ee08404c39a34dcace2d7da09c3867571a87b601a05f6d0b023c0c39fd1f730c806ab17afb5bc92300f37765cbc24b15a22171d'))
+  let prv = sjcl.pkix.parseECPrivateKey(
+    sjcl.bytescodec.hex.toBytes(
+      '307702010104208604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5a00a06082a811ccf5501822da1440342000427b8a4ded46ab34c1bff39077ee08404c39a34dcace2d7da09c3867571a87b601a05f6d0b023c0c39fd1f730c806ab17afb5bc92300f37765cbc24b15a22171d'
+    )
+  )
   let serializedPrv = prv.serialize()
   t.equals(serializedPrv.curve, 'sm2p256v1')
   t.equals(
@@ -96,7 +103,11 @@ test('pkix: parse SM2 SEC1 private key', function (t) {
   t.equals(serializedPrv.secretKey, true)
 
   // without public key
-  prv = sjcl.pkix.parseECPrivateKey(sjcl.bytescodec.hex.toBytes('303102010104208604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5a00a06082a811ccf5501822d'))
+  prv = sjcl.pkix.parseECPrivateKey(
+    sjcl.bytescodec.hex.toBytes(
+      '303102010104208604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5a00a06082a811ccf5501822d'
+    )
+  )
   serializedPrv = prv.serialize()
   t.equals(serializedPrv.curve, 'sm2p256v1')
   t.equals(

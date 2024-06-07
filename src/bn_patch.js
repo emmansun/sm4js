@@ -1,5 +1,7 @@
-function patchBN (sjcl) {
-  /** Serialize to a byte array */
+export default function patchBN (sjcl) {
+  /** Serialize to a byte array
+   * @param {number} l The desired byte length.
+   */
   sjcl.bn.prototype.toBytes = sjcl.bn.prototype.toBytes || function (l) {
     this.fullReduce()
     const result = []
@@ -19,7 +21,7 @@ function patchBN (sjcl) {
   }
 
   /** @memberOf sjcl.bn
-   *  @this {sjcl.bn}
+   * @param {sjcl.BitArray} bytes The byte array to deserialize.
    */
   sjcl.bn.fromBytes = function (bytes) {
     const Class = this
@@ -43,8 +45,4 @@ function patchBN (sjcl) {
 
     return out
   }
-}
-
-module.exports = {
-  patchBN
 }

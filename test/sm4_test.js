@@ -1,6 +1,7 @@
-const test = require('tape')
-const sjcl = require('sjcl-with-all')
-require('../src/sm4').bindSM4(sjcl)
+import test from 'tape'
+import sjcl from 'sjcl-with-all'
+import bindSM4 from '../src/sm4.js'
+bindSM4(sjcl)
 const SM4 = sjcl.cipher.sm4
 
 test('test sample 1', (t) => {
@@ -112,14 +113,17 @@ test('test sm4-cbc', (t) => {
     {
       key: '30313233343536373839414243444546',
       iv: '30313233343536373839414243444546',
-      plaintext: '48656C6C6F20576F726C642048656C6C6F20576F726C642048656C6C6F20576F726C642048656C6C6F20576F726C6464',
-      ciphertext: 'd31e3683e4fc9b516a2c0f983676a9eb1fdcc32af38408978157a2065de34c6a068d0fef4e2bfab4bcaba66441fde0fe92c164eca170247572de1202952ec727'
+      plaintext:
+        '48656C6C6F20576F726C642048656C6C6F20576F726C642048656C6C6F20576F726C642048656C6C6F20576F726C6464',
+      ciphertext:
+        'd31e3683e4fc9b516a2c0f983676a9eb1fdcc32af38408978157a2065de34c6a068d0fef4e2bfab4bcaba66441fde0fe92c164eca170247572de1202952ec727'
     },
     {
       key: '0123456789abcdeffedcba9876543210',
       iv: '00000000000000000000000000000000',
       plaintext: '0123456789abcdeffedcba9876543210',
-      ciphertext: '681edf34d206965e86b3e94f536e4246677d307e844d7aa24579d556490dc7aa'
+      ciphertext:
+        '681edf34d206965e86b3e94f536e4246677d307e844d7aa24579d556490dc7aa'
     }
   ]
   sjcl.beware[
