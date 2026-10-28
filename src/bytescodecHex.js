@@ -34,7 +34,11 @@ export default function bindBytesCodecHex (sjcl) {
      * @param {string} hexStr The hex string to convert.
      */
     toBytes: function (hexStr) {
-      if (typeof hexStr !== 'string' || hexStr.length % 2 === 1) {
+      if (
+        typeof hexStr !== 'string' ||
+        hexStr.length % 2 === 1 ||
+        !/^[0-9a-f]*$/i.test(hexStr)
+      ) {
         throw new Error('Invalid hex string')
       }
       const res = []

@@ -47,9 +47,6 @@ export default function bindPKIX (sjcl) {
       if (alg.out !== oidEccPublicKey) {
         throw new Error(`pkix: unsupported alg <${alg.out}>`)
       }
-      if (bitString.out.bytes.length !== 65 && bitString.out.bytes[0] !== 4) {
-        throw new Error('pkix: unsupported point format')
-      }
       const curveOID = {}
       if (
         !algInner.out.readASN1ObjectIdentifier(curveOID) ||
@@ -61,6 +58,13 @@ export default function bindPKIX (sjcl) {
       for (const c in sjcl.ecc.curves) {
         const curcurve = sjcl.ecc.curves[c]
         if (curcurve.oid === curveOID.out) {
+          const pointByteLength = 1 + 2 * Math.ceil(curcurve.r.bitLength() / 8)
+          if (
+            bitString.out.bytes.length !== pointByteLength ||
+            bitString.out.bytes[0] !== 4
+          ) {
+            throw new Error('pkix: unsupported point format')
+          }
           if (c === 'sm2p256v1') {
             const KeyClazz = sjcl.ecc.sm2.publicKey
             publicKey = new KeyClazz(

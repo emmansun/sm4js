@@ -21,6 +21,21 @@ test('pkix: parse SM2 public key', function (t) {
   )
   t.equals(serialized.curve, 'sm2p256v1')
 
+  const invalidPointPrefix = sjcl.bytescodec.hex.toBytes(sm2PKIXPublicKeyHex)
+  invalidPointPrefix[26] = 0
+  t.throws(
+    () => sjcl.pkix.parsePKIXPublicKey(invalidPointPrefix),
+    /unsupported point format/
+  )
+  const invalidPointLength = sjcl.bytescodec.hex.toBytes(sm2PKIXPublicKeyHex)
+  invalidPointLength.pop()
+  invalidPointLength[1]--
+  invalidPointLength[24]--
+  t.throws(
+    () => sjcl.pkix.parsePKIXPublicKey(invalidPointLength),
+    /unsupported point format/
+  )
+
   t.end()
 })
 

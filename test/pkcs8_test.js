@@ -5,6 +5,31 @@ bindPKCS8(sjcl)
 
 const BigInt = sjcl.bn
 
+test('pkcs8: secure encryption defaults and iteration bounds', function (t) {
+  const opts = sjcl.pkcs8._mergeMarshalOptions()
+  t.equal(opts.cipherOpts.mode, 'gcm')
+  t.equal(opts.kdfOpts.hash, 'sha256')
+  t.equal(opts.kdfOpts.iter, 600000)
+  t.equal(opts.kdfOpts.saltLen, 128)
+  t.throws(
+    () => sjcl.pkcs8._mergeMarshalOptions({ kdfOpts: { iter: 0 } }),
+    /invalid PBKDF2 iteration count/
+  )
+  t.throws(
+    () => sjcl.pkcs8._mergeMarshalOptions({ kdfOpts: { saltLen: 64 } }),
+    /salt length must be between 128 and 4096 bits/
+  )
+  t.throws(
+    () => sjcl.pkcs8._pbkdf2('password', [], 0, 128, sjcl.hash.sha256),
+    /invalid params to pbkdf2/
+  )
+  t.throws(
+    () => sjcl.pkcs8._pbkdf2('password', [], 1000001, 128, sjcl.hash.sha256),
+    /invalid params to pbkdf2/
+  )
+  t.end()
+})
+
 test('pkcs8: parse private key', function (t) {
   let prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(
     sjcl.bytescodec.hex.toBytes(
@@ -158,10 +183,27 @@ test('pkcs8: marshal encrypted key material', function (t) {
     )
   )
 
+  t.throws(
+    () => sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, ''),
+    /password must not be empty/
+  )
+  t.throws(
+    () => sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, []),
+    /password must not be empty/
+  )
+  t.throws(
+    () => sjcl.pkcs8.parsePKCS8ECPrivateKey([], ''),
+    /password must not be empty/
+  )
+  t.throws(
+    () => sjcl.pkcs8.parsePKCS8ECPrivateKey([], []),
+    /password must not be empty/
+  )
+
   // sm3+sm4-CBC
   let bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', {
     kdfOpts: { hash: 'sm3' },
-    cipherOpts: { cipher: 'sm4' }
+    cipherOpts: { cipher: 'sm4', mode: 'cbc' }
   })
   let prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
   let serializedPrv = prv.serialize()
@@ -170,7 +212,7 @@ test('pkcs8: marshal encrypted key material', function (t) {
     '8604263b78b289bdd6b927d543b36088479688e7171099ad36328829c3cde2a5'
   )
 
-  // all default: aes-128-cbc, sha1
+  // all default: aes-128-gcm, sha256
   bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1')
   prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
   serializedPrv = prv.serialize()
@@ -182,7 +224,7 @@ test('pkcs8: marshal encrypted key material', function (t) {
   // sha256+aes256-CBC
   bytes = sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', {
     kdfOpts: { hash: 'sha256', iter: 2048, saltLen: 128 },
-    cipherOpts: { cipher: 'aes', keyLen: 32 }
+    cipherOpts: { cipher: 'aes', mode: 'cbc', keyLen: 32 }
   })
   prv = sjcl.pkcs8.parsePKCS8ECPrivateKey(bytes, 'Password1')
   serializedPrv = prv.serialize()
@@ -229,13 +271,13 @@ test('pkcs8: marshal encrypted key material', function (t) {
       kdfOpts: { hash: 'sm3' },
       cipherOpts: { cipher: 'des' }
     })
-  }, /pkcs8: unsupported cipher des-128-cbc/)
+  }, /pkcs8: unsupported cipher des-128-gcm/)
   t.throws(() => {
     sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', {
       kdfOpts: { hash: 'sm3' },
       cipherOpts: { cipher: 'aes', keyLen: 25 }
     })
-  }, /pkcs8: unsupported cipher aes-200-cbc/)
+  }, /pkcs8: unsupported cipher aes-200-gcm/)
   t.throws(() => {
     sjcl.pkcs8.marshalPKCS8ECPrivateKey(keys.sec, true, 'Password1', {
       kdfOpts: { hash: 'sm3' },

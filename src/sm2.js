@@ -3,9 +3,15 @@
  */
 import { Builder, Parser } from './asn1.js'
 import bindBytesCodecHex from './bytescodecHex.js'
+import bindKDF from './kdf.js'
+import bindSM3 from './sm3.js'
 import patchBN from './bn_patch.js'
 
+const allowOrderMinus1 = Symbol('allowOrderMinus1')
+
 export default function bindSM2 (sjcl) {
+  bindSM3(sjcl)
+  bindKDF(sjcl)
   if (sjcl.ecc.curves.sm2p256v1) return
   patchBN(sjcl)
   bindBytesCodecHex(sjcl)
@@ -54,14 +60,21 @@ export default function bindSM2 (sjcl) {
       }
       const exponent = new BigInt(key.exponent)
       const PrivateKey = sjcl.ecc[key.type].secretKey
-      return new PrivateKey(curve, exponent)
+      return key.type === 'sm2'
+        ? new PrivateKey(
+          exponent,
+          key.checkOrderMinus1 === false ? allowOrderMinus1 : undefined
+        )
+        : new PrivateKey(curve, exponent)
     } else {
       if (!key.point) {
         throw new InvalidError('invalid point')
       }
       const PublicKey = sjcl.ecc[key.type].publicKey
       const point = curve.fromBits(sjcl.codec.hex.toBits(key.point))
-      return new PublicKey(curve, point)
+      return key.type === 'sm2'
+        ? new PublicKey(point)
+        : new PublicKey(curve, point)
     }
   }
 
@@ -108,25 +121,41 @@ export default function bindSM2 (sjcl) {
      * @constructor
      * @param {sjcl.BitArray|sjcl.BigNumber} exponent The private key big number
      */
-    secretKey: function (exponent) {
+    secretKey: function (exponent, orderMinus1Token) {
       if (exponent instanceof Array) {
         this._exponent = sjcl.bn.fromBits(exponent)
       } else {
         this._exponent = exponent
       }
+      const checkOrderMinus1 = orderMinus1Token !== allowOrderMinus1
+      const upperBound = checkOrderMinus1
+        ? sm2Curve.r.sub(one)
+        : sm2Curve.r
+      if (
+        !(this._exponent instanceof BigInt) ||
+        !this._exponent.greaterEquals(one) ||
+        this._exponent.greaterEquals(upperBound)
+      ) {
+        throw new Error('sm2: invalid private key scalar')
+      }
       this._curve = sm2Curve
       this._curveBitLength = sm2Curve.r.bitLength()
+      this._checkOrderMinus1 = checkOrderMinus1
 
       this.serialize = function () {
         const exponent = this.get()
         const curveName = sjcl.ecc.curveName(sm2Curve)
-        return {
+        const serializedKey = {
           // @ts-ignore
           type: this.getType(),
           secretKey: true,
           exponent: sjcl.codec.hex.fromBits(exponent),
           curve: curveName
         }
+        if (!this._checkOrderMinus1) {
+          serializedKey.checkOrderMinus1 = false
+        }
+        return serializedKey
       }
 
       /** get this keys exponent data
@@ -141,25 +170,30 @@ export default function bindSM2 (sjcl) {
      * Generate SM2 key pair
      * @param {sjcl.BitArray|sjcl.BigNumber} sec
      * @param {number} paranoia Paranoia for generation (default 6)
-     * @param {boolean} checkOrderMinus1 make sure the generated private key is in (0, n-1) or not (default true)
+     * @param {boolean} checkOrderMinus1 Exclude n-1 from randomly generated scalars (default true)
      * @returns {Object} the key pair
      */
     generateKeys: function (sec, paranoia = 6, checkOrderMinus1 = true) {
       if (sec instanceof Array) {
         sec = sjcl.bn.fromBits(sec)
       }
-      sec =
-        sec ||
-        sjcl.bn.random(
-          checkOrderMinus1 ? sm2Curve.r.sub(one) : sm2Curve.r,
-          paranoia
-        )
-      const pub = sm2Curve.G.mult(sec)
+      const isRandom = sec === undefined || sec === null
+      if (isRandom) {
+        const randomLimit = checkOrderMinus1
+          ? sm2Curve.r.sub(one)
+          : sm2Curve.r
+        sec = sjcl.bn.random(randomLimit.sub(one), paranoia).add(one)
+      }
       const SM2PublicKey = sjcl.ecc.sm2.publicKey
       const SM2PrivateKey = sjcl.ecc.sm2.secretKey
+      const orderMinus1Token = isRandom && !checkOrderMinus1
+        ? allowOrderMinus1
+        : undefined
+      const privateKey = new SM2PrivateKey(sec, orderMinus1Token)
+      const pub = sm2Curve.G.mult(privateKey._exponent)
       return {
         pub: new SM2PublicKey(pub),
-        sec: new SM2PrivateKey(sec)
+        sec: privateKey
       }
     }
   }

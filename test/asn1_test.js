@@ -191,6 +191,23 @@ test('ASN1 parser basic', function (t) {
   t.end()
 })
 
+test('ASN1 BIT STRING rejects nonzero unused bits', function (t) {
+  const valid = new asn1.Parser([3, 2, 2, 4])
+  const validOutput = {}
+  t.ok(valid.readASN1BitString(validOutput))
+  t.equal(validOutput.out.bitLength, 6)
+
+  const invalid = new asn1.Parser([3, 2, 2, 1])
+  t.notOk(invalid.readASN1BitString({}))
+  t.end()
+})
+
+test('hex codec rejects non-hex characters', function (t) {
+  t.throws(() => sjcl.bytescodec.hex.toBytes('0g'), /Invalid hex string/)
+  t.throws(() => sjcl.bytescodec.hex.toBytes('gg'), /Invalid hex string/)
+  t.end()
+})
+
 test('addASN1Unsigned test', function (t) {
   let builder = new asn1.Builder()
   builder.addASN1Unsigned(0x12345678)

@@ -1,11 +1,7 @@
 import test from 'tape'
 import sjcl from 'sjcl-with-all'
 import bindSM2 from '../src/sm2.js'
-import bindKDF from '../src/kdf.js'
-import bindSM3 from '../src/sm3.js'
 
-bindSM3(sjcl)
-bindKDF(sjcl)
 bindSM2(sjcl)
 
 test('SM2 public key', function (t) {
@@ -63,6 +59,61 @@ test('SM2 private key', function (t) {
     '6c5a0a0b2eed3cbec3e4f1252bfe0e28c504a1c6bf1999eebb0af9ef0f8e6c85'
   )
   t.equals(serializedPrv.secretKey, true)
+
+  t.end()
+})
+
+test('SM2 private key scalar bounds', function (t) {
+  const SM2PrivateKey = sjcl.ecc.sm2.secretKey
+  const BigNum = sjcl.bn
+  const order = sjcl.ecc.curves.sm2p256v1.r
+  const one = new BigNum(1)
+  const maximum = order.sub(new BigNum(2))
+  const maximumEphemeral = order.sub(one)
+
+  t.doesNotThrow(() => new SM2PrivateKey(one))
+  t.doesNotThrow(() => new SM2PrivateKey(maximum))
+  t.throws(() => new SM2PrivateKey(new BigNum(0)), /invalid private key scalar/)
+  t.throws(() => sjcl.ecc.sm2.generateKeys(new BigNum(0)), /invalid private key scalar/)
+  t.throws(
+    () => new SM2PrivateKey(order.sub(one)),
+    /invalid private key scalar/
+  )
+  t.throws(() => new SM2PrivateKey(order), /invalid private key scalar/)
+  t.throws(
+    () => sjcl.ecc.sm2.generateKeys(maximumEphemeral, 6, false),
+    /invalid private key scalar/
+  )
+
+  const originalRandom = sjcl.bn.random
+  sjcl.bn.random = (limit) => limit.sub(one)
+  try {
+    const keys = sjcl.ecc.sm2.generateKeys()
+    t.equal(
+      sjcl.codec.hex.fromBits(keys.sec.get()),
+      sjcl.codec.hex.fromBits(maximum.toBits())
+    )
+    const ephemeralKeys = sjcl.ecc.sm2.generateKeys(undefined, 6, false)
+    t.equal(
+      sjcl.codec.hex.fromBits(ephemeralKeys.sec.get()),
+      sjcl.codec.hex.fromBits(maximumEphemeral.toBits())
+    )
+    t.equal(ephemeralKeys.sec.serialize().checkOrderMinus1, false)
+    const validKeys = sjcl.ecc.sm2.generateKeys(one)
+    const restoredPrivateKey = sjcl.ecc.deserialize(validKeys.sec.serialize())
+    const restoredPublicKey = sjcl.ecc.deserialize(validKeys.pub.serialize())
+    const restoredEphemeralKey = sjcl.ecc.deserialize(
+      ephemeralKeys.sec.serialize()
+    )
+    t.equal(
+      sjcl.codec.hex.fromBits(restoredPrivateKey.get()),
+      sjcl.codec.hex.fromBits(validKeys.sec.get())
+    )
+    t.deepEqual(restoredPublicKey._point, validKeys.pub._point)
+    t.equal(restoredEphemeralKey.serialize().checkOrderMinus1, false)
+  } finally {
+    sjcl.bn.random = originalRandom
+  }
 
   t.end()
 })

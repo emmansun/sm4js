@@ -603,7 +603,7 @@ class Parser {
       paddingBits > 7 ||
       (bytes.length === 0 && paddingBits !== 0) ||
       (bytes.length > 0 &&
-        (bytes[bytes.length - 1] & (1 << (paddingBits - 1))) !== 0)
+        (bytes[bytes.length - 1] & ((1 << paddingBits) - 1)) !== 0)
     ) {
       return false
     }

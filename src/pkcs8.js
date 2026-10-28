@@ -9,6 +9,7 @@ import bindPKIX from './pkix.js'
 const oidEccPublicKey = '1.2.840.10045.2.1'
 const oidPBES2 = '1.2.840.113549.1.5.13'
 const oidPBKDF2 = '1.2.840.113549.1.5.12'
+const maxPBKDF2Iterations = 1000000
 
 const supportedHMACAlgorithms = [
   { oid: '1.2.840.113549.2.7', hash: 'sha1' }, // HMAC(SHA-1)
@@ -81,8 +82,17 @@ export default function bindPKCS8 (sjcl) {
       password,
       opts
     ) {
-      if (!password) {
+      if (password === undefined || password === null) {
         return this._marshalPKCS8ECPrivateKey(key, includePublicKey)
+      }
+      if (
+        (typeof password === 'string' && password.length === 0) ||
+        (Array.isArray(password) && sjcl.bitArray.bitLength(password) === 0)
+      ) {
+        throw new Error('pkcs8: password must not be empty')
+      }
+      if (typeof password !== 'string' && !Array.isArray(password)) {
+        throw new TypeError('pkcs8: password must be a string or bitArray')
       }
       opts = this._mergeMarshalOptions(opts)
       const cipherOpts = opts.cipherOpts
@@ -210,7 +220,7 @@ export default function bindPKCS8 (sjcl) {
       }
       opts.cipherOpts = opts.cipherOpts || {}
       opts.cipherOpts.cipher = opts.cipherOpts.cipher || 'aes'
-      opts.cipherOpts.mode = opts.cipherOpts.mode || 'cbc'
+      opts.cipherOpts.mode = opts.cipherOpts.mode || 'gcm'
       opts.cipherOpts.keyLen = opts.cipherOpts.keyLen || 16
       opts.cipherOpts.keyBitLen = opts.cipherOpts.keyLen * 8
       opts.cipherOpts.gcm = opts.cipherOpts.gcm || {}
@@ -223,9 +233,25 @@ export default function bindPKCS8 (sjcl) {
         throw new Error('ICVlen should be in [12,16]')
       }
       opts.kdfOpts = opts.kdfOpts || {}
-      opts.kdfOpts.hash = opts.kdfOpts.hash || 'sha1'
-      opts.kdfOpts.iter = opts.kdfOpts.iter || 1000
-      opts.kdfOpts.saltLen = opts.kdfOpts.saltLen || 64
+      opts.kdfOpts.hash = opts.kdfOpts.hash || 'sha256'
+      opts.kdfOpts.iter =
+        opts.kdfOpts.iter === undefined ? 600000 : opts.kdfOpts.iter
+      opts.kdfOpts.saltLen =
+        opts.kdfOpts.saltLen === undefined ? 128 : opts.kdfOpts.saltLen
+      if (
+        !Number.isSafeInteger(opts.kdfOpts.iter) ||
+        opts.kdfOpts.iter < 1 ||
+        opts.kdfOpts.iter > maxPBKDF2Iterations
+      ) {
+        throw new Error('pkcs8: invalid PBKDF2 iteration count')
+      }
+      if (
+        !Number.isSafeInteger(opts.kdfOpts.saltLen) ||
+        opts.kdfOpts.saltLen < 128 ||
+        opts.kdfOpts.saltLen > 4096
+      ) {
+        throw new Error('pkcs8: salt length must be between 128 and 4096 bits')
+      }
       return opts
     },
 
@@ -264,14 +290,17 @@ export default function bindPKCS8 (sjcl) {
      * @returns {sjcl.ecc.sm2.secretKey|sjcl.ecc.ecdsa.secretKey} the private key object
      */
     parsePKCS8ECPrivateKey: function (keyDer, password) {
-      if (!password) {
+      if (password === undefined || password === null) {
         return this._parsePKCS8ECPrivateKey(keyDer)
       }
       if (typeof password === 'string') {
+        if (password.length === 0) {
+          throw new Error('pkcs8: password must not be empty')
+        }
         password = sjcl.codec.utf8String.toBits(password)
       }
-      if (sjcl.bitArray.bitLength(password) === 0) {
-        return this._parsePKCS8ECPrivateKey(keyDer)
+      if (!Array.isArray(password) || sjcl.bitArray.bitLength(password) === 0) {
+        throw new Error('pkcs8: password must not be empty')
       }
       const input = new Parser(keyDer)
       let inner = {}
@@ -479,9 +508,15 @@ export default function bindPKCS8 (sjcl) {
     _pbkdf2: function (password, salt, count, length, Hash) {
       const HMAC = sjcl.misc.hmac
       const InvalidException = sjcl.exception.invalid
-      count = count || 10000
 
-      if (length < 0 || count < 0 || !Hash) {
+      if (
+        !Number.isSafeInteger(count) ||
+        count < 1 ||
+        count > maxPBKDF2Iterations ||
+        !Number.isSafeInteger(length) ||
+        length < 0 ||
+        typeof Hash !== 'function'
+      ) {
         throw new InvalidException('invalid params to pbkdf2')
       }
 
