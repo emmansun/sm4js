@@ -1,3 +1,5 @@
 test
 out
 .github
+.npmrc
+clean-lock.ps1

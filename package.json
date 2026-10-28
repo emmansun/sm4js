@@ -1,6 +1,6 @@
 {
     "name": "gmsm-sm4js",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "description": "Pure Javascript implementation of the SM2/SM3/SM4 cipher based on sjcl",
     "keywords": [
         "sm2",
@@ -21,6 +21,7 @@
     },
     "type": "module",
     "scripts": {
+        "prepack": "npm run build",
         "build": "babel src --out-dir lib --out-file-extension .cjs",
         "fix": "standard --fix \"src/*.js\" \"test/*.js\"",
         "test": "tape test/*.js"
